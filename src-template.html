@@ -131,19 +131,57 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 .privacy{color:var(--muted);font-size:.85rem;text-align:center;margin:0;display:flex;align-items:center;justify-content:center;gap:6px}
 .privacy svg{width:15px;height:15px;color:var(--ok)}
 
-/* viewer */
-.viewer{position:fixed;inset:0;background:rgba(12,14,26,.9);display:flex;flex-direction:column;z-index:10;color:#f1f3fa}
-.vbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));padding-top:max(10px,env(safe-area-inset-top,0px))}
-.vbar .vt{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.vstage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:8px 16px}
-.vstage canvas{max-width:100%;max-height:100%;background:#fff;border-radius:4px;box-shadow:0 8px 34px rgba(0,0,0,.5)}
-.vfoot{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:10px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom,0px))}
-.vbtn{background:rgba(255,255,255,.1);color:#f1f3fa;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:9px 14px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:.95rem}
-.vbtn:hover:not(:disabled){background:rgba(255,255,255,.2)}
+/* viewer + editor */
+.viewer{position:fixed;inset:0;background:#070b16;display:flex;flex-direction:column;z-index:10;color:#f1f3fa}
+.vbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));padding-top:max(8px,env(safe-area-inset-top,0px));border-bottom:1px solid rgba(255,255,255,.08)}
+.vbar .vt{font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.95rem}
+.vtools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid rgba(255,255,255,.08);background:#0a1020}
+.vtools .grp{display:flex;align-items:center;gap:4px;padding:3px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px}
+.vtools .sep{flex:1}
+.tool{height:38px;min-width:38px;padding:0 10px;border-radius:9px;border:0;background:transparent;color:#c9d2e3;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:.88rem;white-space:nowrap}
+.tool:hover:not(:disabled){background:rgba(255,255,255,.1);color:#fff}
+.tool.on{background:var(--gold);color:var(--gold-ink);font-weight:600}
+.tool:disabled{opacity:.3;cursor:default}
+.tool svg{width:19px;height:19px;flex:none}
+.tool.del:hover{background:#c0281c;color:#fff}
+.vtools select,.vtools input[type=color]{height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:#12213c;color:#f1f3fa;font:inherit;font-size:.85rem;padding:0 6px}
+.vtools input[type=color]{width:38px;padding:2px;cursor:pointer}
+.vhint{font-size:.8rem;color:#93a6c2;padding:4px max(16px,env(safe-area-inset-right,0px)) 0;min-height:1.3em}
+.vstage{flex:1;min-height:0;overflow:auto;position:relative;padding:14px 16px;display:grid;place-items:start center}
+.vstage.center{place-items:center}
+.vwrap{position:relative;flex:none;box-shadow:0 8px 34px rgba(0,0,0,.6);border-radius:3px;background:#fff;line-height:0}
+.vwrap canvas{display:block}
+#vOverlay{position:absolute;inset:0;touch-action:none}
+#vOverlay.c-pen{cursor:crosshair}#vOverlay.c-text{cursor:text}#vOverlay.c-box{cursor:crosshair}#vOverlay.c-place{cursor:copy}#vOverlay.c-move{cursor:move}#vOverlay.c-grab{cursor:grab}#vOverlay.c-resize{cursor:nwse-resize}
+.tedit{position:absolute;z-index:3;margin:0;padding:0;border:1.5px dashed var(--brand);background:rgba(255,255,255,.65);color:#000;font-family:var(--font);line-height:1.25;resize:none;overflow:hidden;outline:none;box-sizing:content-box;white-space:pre-wrap;word-break:break-word}
+.vfoot{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:8px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.08)}
+.vbtn{background:rgba(255,255,255,.08);color:#f1f3fa;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:.92rem}
+.vbtn:hover:not(:disabled){background:rgba(255,255,255,.18)}
 .vbtn:disabled{opacity:.3;cursor:default}
-.vbtn svg{width:19px;height:19px}
+.vbtn svg{width:18px;height:18px}
 .vbtn.del:hover{background:#c0281c}
+/* signature modal */
+.modal{position:fixed;inset:0;z-index:20;background:rgba(5,8,16,.7);display:grid;place-items:center;padding:16px}
+.modal .box{background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(640px,100%);display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.modal h3{margin:0;font-size:1.15rem;color:var(--ink)}
+.modal .pad{position:relative;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.modal .pad canvas{display:block;width:100%;height:200px;touch-action:none;cursor:crosshair}
+.modal .pad .line{position:absolute;left:8%;right:8%;bottom:48px;border-top:1px dashed #9ab;pointer-events:none}
+.modal .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.modal .row .r{display:flex;gap:8px;flex-wrap:wrap}
+.sigs{display:flex;flex-wrap:wrap;gap:8px}
+.sig{position:relative;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px;cursor:pointer;width:150px;height:64px;display:grid;place-items:center}
+.sig:hover{border-color:var(--brand)}
+.sig img{max-width:100%;max-height:100%}
+.sig .x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:0;background:var(--danger);color:#fff;font-size:12px;cursor:pointer;display:grid;place-items:center}
+.pbadge{position:absolute;bottom:8px;right:8px;background:var(--brand);color:var(--brand-ink);border-radius:6px;padding:0 7px;font-size:.74rem;font-weight:600}
 
+@media (max-width:640px){
+  .tool span:not(#zoomLbl){display:none}
+  .tool{padding:0 8px}
+  .vtools{gap:4px}
+  .vhint{font-size:.74rem}
+}
 @media (max-width:760px){
   .savebar .in{grid-template-columns:1fr;gap:10px}
   body.has-pages .wrap{padding-bottom:240px}
@@ -213,15 +251,67 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   </div>
 </div>
 
-<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="תצוגת עמוד">
-  <div class="vbar"><div class="vt" id="vTitle"></div><button class="vbtn" id="vClose" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg><span>סגירה</span></button></div>
-  <div class="vstage" id="vStage"><canvas id="vCanvas"></canvas></div>
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="עריכת עמוד">
+  <div class="vbar">
+    <div class="vt" id="vTitle"></div>
+    <button class="vbtn" id="vClose" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg><span>סיום</span></button>
+  </div>
+  <div class="vtools">
+    <div class="grp" role="radiogroup" aria-label="כלי עריכה">
+      <button class="tool on" type="button" data-tool="select" title="בחירה והזזה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 8-6 2-3 7z"/></svg><span>בחירה</span></button>
+      <button class="tool" type="button" data-tool="pen" title="ציור חופשי"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg><span>ציור</span></button>
+      <button class="tool" type="button" data-tool="text" title="הוספת טקסט"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg><span>טקסט</span></button>
+      <button class="tool" type="button" data-tool="sig" title="חתימה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-6 5-8 6-6s-1 7 1 7 3-6 5-5 1 4 3 4 2-2 3-2"/><path d="M3 21h18"/></svg><span>חתימה</span></button>
+      <button class="tool" type="button" data-tool="edit" title="עריכת טקסט קיים"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg><span>עריכת טקסט</span></button>
+      <button class="tool" type="button" data-tool="cover" title="מחיקת אזור (כיסוי)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16a1 1 0 0 1 0-1.4L13.6 4a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4L11 19"/><path d="M6.5 12.5l5 5"/></svg><span>מחיקה</span></button>
+    </div>
+    <div class="grp" id="styleGrp">
+      <input type="color" id="penColor" value="#1d4ed8" title="צבע" aria-label="צבע">
+      <select id="penSize" title="עובי קו" aria-label="עובי קו"><option value="1.5">דק</option><option value="3" selected>בינוני</option><option value="6">עבה</option></select>
+      <select id="fontSize" title="גודל טקסט" aria-label="גודל טקסט"><option>9</option><option>10</option><option>11</option><option selected>12</option><option>14</option><option>16</option><option>18</option><option>22</option><option>28</option><option>36</option></select>
+      <button class="tool" type="button" id="boldBtn" title="מודגש" aria-pressed="false"><b>B</b></button>
+    </div>
+    <div class="grp">
+      <button class="tool" type="button" id="undoBtn" title="ביטול (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg></button>
+      <button class="tool del" type="button" id="delSel" title="מחיקת הפריט שנבחר (Delete)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+    </div>
+    <span class="sep"></span>
+    <div class="grp">
+      <button class="tool" type="button" id="zoomOut" title="הקטנה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M8 11h6"/></svg></button>
+      <button class="tool" type="button" id="zoomFit" title="התאמה למסך" style="min-width:58px;justify-content:center"><span id="zoomLbl">100%</span></button>
+      <button class="tool" type="button" id="zoomIn" title="הגדלה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg></button>
+    </div>
+  </div>
+  <div class="vhint" id="vHint"></div>
+  <div class="vstage" id="vStage"><div class="vwrap" id="vWrap"><canvas id="vCanvas"></canvas><canvas id="vOverlay"></canvas></div></div>
   <div class="vfoot">
     <button class="vbtn" id="vPrev" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg><span>הקודם</span></button>
     <button class="vbtn" id="vRotL" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg><span>סיבוב שמאלה</span></button>
     <button class="vbtn" id="vRotR" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg><span>סיבוב ימינה</span></button>
     <button class="vbtn del" id="vDel" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg><span>מחיקת העמוד</span></button>
     <button class="vbtn" id="vNext" type="button"><span>הבא</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+  </div>
+</div>
+
+<div class="modal" id="sigModal" hidden role="dialog" aria-modal="true" aria-label="חתימה">
+  <div class="box">
+    <h3>חתימה</h3>
+    <div class="pad"><canvas id="sigPad"></canvas><div class="line"></div></div>
+    <div class="row">
+      <div class="r">
+        <button class="primary" id="sigUse" type="button" style="height:40px;padding:0 20px;font-size:.95rem">הוספה לעמוד</button>
+        <button class="btn" id="sigClear" type="button">ניקוי</button>
+      </div>
+      <div class="r">
+        <label class="btn" style="cursor:pointer">העלאת תמונת חתימה<input type="file" id="sigFile" accept="image/*" hidden></label>
+        <button class="btn" id="sigCancel" type="button">ביטול</button>
+      </div>
+    </div>
+    <div id="sigSavedWrap" hidden>
+      <div class="lbl" style="margin-bottom:6px">חתימות שמורות</div>
+      <div class="sigs" id="sigSaved"></div>
+    </div>
+    <p class="note" style="margin:0">החתימה נשמרת רק בדפדפן הזה, במכשיר הזה.</p>
   </div>
 </div>
 
@@ -242,6 +332,9 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 <script type="text/plain" id="libTiff">/*PAKO*/
 /*UTIF*/</script>
 <script type="text/plain" id="libHeic">/*HEIC*/</script>
+<script type="text/plain" id="libFontkit">/*FONTKIT*/</script>
+<script type="text/plain" id="fontHeebo">/*HEEBO*/</script>
+<script type="text/plain" id="fontHeeboBold">/*HEEBOB*/</script>
 <script>
 (function(){
   'use strict';
@@ -402,6 +495,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     return '<button class="thumb" type="button" data-act="view" aria-label="הגדלת עמוד '+(i+1)+'">'
       +(p.thumb?'<img alt="" draggable="false" src="'+p.thumb+'" style="transform:rotate('+p.rot+'deg)">':'<span class="loading">טוען...</span>')
       +'<span class="num">'+(i+1)+'</span>'
+      +(p.annots&&p.annots.length?'<span class="pbadge">✎ '+p.annots.length+'</span>':'')
       +(land===null?'':'<span class="orient">'+(land?'לרוחב':'לאורך')+'</span>')
       +'</button>'
       +'<div class="src"><i style="background:'+f.color+'"></i><span></span></div>'
@@ -469,56 +563,416 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   document.addEventListener('dragleave',e=>{if(!e.relatedTarget) drop.classList.remove('over');});
   document.addEventListener('drop',e=>{drop.classList.remove('over'); if(!dragKey&&hasFiles(e)){e.preventDefault(); addFiles(e.dataTransfer.files);}});
 
-  /* ---------- viewer ---------- */
-  const viewer=$('viewer'),vCanvas=$('vCanvas'),vStage=$('vStage');
-  let vToken=0;
-  function openViewer(i){viewIdx=i; viewer.hidden=false; document.body.style.overflow='hidden'; drawViewer(); $('vClose').focus();}
-  function closeViewer(){viewer.hidden=true; document.body.style.overflow=''; viewIdx=-1;}
+  /* ==================== viewer + editor ====================
+     Annotations live in PDF user space (points, y-up) so they survive zoom and rotation.
+     Box annotations (text, image, cover) remember the display rotation R they were made in;
+     their w/h are in screen orientation, r/d are the screen right/down axes in PDF space. */
+  const viewer=$('viewer'),vCanvas=$('vCanvas'),vOverlay=$('vOverlay'),vStage=$('vStage'),vWrap=$('vWrap'),vHint=$('vHint');
+  const octx=vOverlay.getContext('2d');
+  const measureCtx=document.createElement('canvas').getContext('2d');
+  const A4=[595.28,841.89], IMG_MARGIN=24, LH=1.25, BASE=0.92;
+  let vToken=0, zoom=1, geom=null, tool='select', sel=null, placing=null, drag=null, editing=null, dirtyRedraw=false;
+  const hasHeb=s=>/[֐-׿]/.test(s);
+  const firstStrongRtl=s=>{const m=s.match(/[A-Za-z֐-׿]/); return !!(m&&/[֐-׿]/.test(m[0]));};
+  const hexToRgb=h=>{const n=parseInt(h.slice(1),16); return [((n>>16)&255)/255,((n>>8)&255)/255,(n&255)/255];};
+  const rgbToCss=c=>'rgb('+c.map(v=>Math.round(v*255)).join(',')+')';
+  const AXES={0:{r:[1,0],d:[0,-1]},90:{r:[0,1],d:[1,0]},180:{r:[-1,0],d:[0,1]},270:{r:[0,-1],d:[-1,0]}};
+
+  function imageLayout(fi){
+    const land=fi.w>fi.h, W=land?A4[1]:A4[0], H=land?A4[0]:A4[1];
+    const s=Math.min((W-2*IMG_MARGIN)/fi.w,(H-2*IMG_MARGIN)/fi.h), w=fi.w*s, h=fi.h*s;
+    return {W,H,x:(W-w)/2,y:(H-h)/2,w,h};
+  }
+  async function pageGeom(p){
+    const f=files.get(p.fileId);
+    if(f.kind==='pdf'){
+      const pg=await f.pdf.doc.getPage(p.index+1);
+      return {pdf:true,pg,view:pg.view.slice(),R:norm((pg.rotate||0)+p.rot)};
+    }
+    const fi=f.imgs[p.index], L=imageLayout(fi);
+    return {pdf:false,fi,L,view:[0,0,L.W,L.H],R:norm(p.rot)};
+  }
+  /* same formula as pdf.js PageViewport, so overlay math matches the rendered page */
+  function makeVP(view,scale,rotation){
+    const cx=(view[2]+view[0])/2, cy=(view[3]+view[1])/2;
+    let a,b,c,d;
+    switch(rotation){case 180:a=-1;b=0;c=0;d=1;break;case 90:a=0;b=1;c=1;d=0;break;case 270:a=0;b=-1;c=-1;d=0;break;default:a=1;b=0;c=0;d=-1;}
+    let ox,oy,w,h;
+    if(a===0){ox=Math.abs(cy-view[1])*scale;oy=Math.abs(cx-view[0])*scale;w=Math.abs(view[3]-view[1])*scale;h=Math.abs(view[2]-view[0])*scale;}
+    else{ox=Math.abs(cx-view[0])*scale;oy=Math.abs(cy-view[1])*scale;w=Math.abs(view[2]-view[0])*scale;h=Math.abs(view[3]-view[1])*scale;}
+    const t=[a*scale,b*scale,c*scale,d*scale,ox-a*scale*cx-c*scale*cy,oy-b*scale*cx-d*scale*cy];
+    const det=t[0]*t[3]-t[1]*t[2];
+    return {width:w,height:h,transform:t,
+      toCanvas:(x,y)=>[t[0]*x+t[2]*y+t[4],t[1]*x+t[3]*y+t[5]],
+      toPdf:(X,Y)=>{const x=X-t[4],y=Y-t[5]; return [(t[3]*x-t[2]*y)/det,(-t[1]*x+t[0]*y)/det];}};
+  }
+  const annotsOf=p=>(p.annots||(p.annots=[]));
+  function pushHist(p){ (p.hist||(p.hist=[])).push(JSON.stringify(annotsOf(p))); if(p.hist.length>40) p.hist.shift(); }
+
+  /* ---- text layout shared by screen and export ---- */
+  function wrapText(text,maxW,measure){
+    const out=[];
+    for(const para of String(text).split('\n')){
+      const words=para.split(' '); let line='';
+      for(const w of words){
+        const t=line?line+' '+w:w;
+        if(measure(t)<=maxW||!line) line=t; else {out.push(line); line=w;}
+        while(measure(line)>maxW&&line.length>1){ let k=line.length-1; while(k>1&&measure(line.slice(0,k))>maxW) k--; out.push(line.slice(0,k)); line=line.slice(k); }
+      }
+      out.push(line);
+    }
+    return out;
+  }
+  function canvasFont(a,px){ return (a.bold?'700 ':'400 ')+px+'px Heebo, Arial, sans-serif'; }
+  function textLines(a){ measureCtx.font=canvasFont(a,a.size); return wrapText(a.text,a.w,s=>measureCtx.measureText(s).width); }
+  function fitTextHeight(a){ a.h=Math.max(a.size*LH, textLines(a).length*a.size*LH); }
+
+  /* ---- open / close ---- */
+  function openViewer(i){ viewIdx=i; viewer.hidden=false; document.body.style.overflow='hidden'; zoom=1; sel=null; placing=null; setTool('select'); drawViewer(); }
+  function closeViewer(){ commitEdit(); viewer.hidden=true; document.body.style.overflow=''; viewIdx=-1; renderGrid(); }
+  function setTool(t){ tool=t; placing=null; if(t!=='select') sel=null; commitEdit();
+    viewer.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
+    vOverlay.className=cursorFor();
+    const H={select:'לחיצה על פריט בוחרת אותו. גוררים כדי להזיז, הפינה כדי לשנות גודל. לחיצה כפולה על טקסט פותחת לעריכה.',
+      pen:'מציירים עם העכבר או האצבע.',text:'לוחצים במקום שבו הטקסט יתחיל.',sig:'',
+      edit:'מסמנים מלבן סביב הטקסט שרוצים לשנות. הטקסט המקורי מוסתר ונפתח לעריכה.',
+      cover:'מסמנים מלבן. האזור מכוסה בצבע הרקע של העמוד.'};
+    vHint.textContent=H[t]||''; $('delSel').disabled=!sel; drawOverlay();
+  }
+  function cursorFor(){ return placing?'c-place':(({pen:'c-pen',text:'c-text',edit:'c-box',cover:'c-box'})[tool]||''); }
+  viewer.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.tool==='sig') openSig(); else setTool(b.dataset.tool); }));
+
+  /* ---- rendering ---- */
   async function drawViewer(){
     if(viewIdx<0||!pages.length){closeViewer(); return;}
     viewIdx=Math.min(viewIdx,pages.length-1);
     const p=pages[viewIdx], f=files.get(p.fileId), tok=++vToken;
     $('vTitle').textContent='עמוד '+(viewIdx+1)+' מתוך '+pages.length+' · '+pageLabel(f,p);
     $('vPrev').disabled=viewIdx===0; $('vNext').disabled=viewIdx===pages.length-1;
-    const boxW=Math.max(200,vStage.clientWidth-32), boxH=Math.max(200,vStage.clientHeight-16);
-    const dpr=Math.min(2,window.devicePixelRatio||1);
-    const c=document.createElement('canvas'), ctx=c.getContext('2d');
-    if(f.kind==='pdf'){
-      const pg=await f.pdf.doc.getPage(p.index+1);
-      const rotation=norm(pg.rotate+p.rot);
-      const v1=pg.getViewport({scale:1,rotation});
-      const s=Math.min(boxW/v1.width,boxH/v1.height)*dpr;
-      const vp=pg.getViewport({scale:s,rotation});
-      c.width=Math.ceil(vp.width); c.height=Math.ceil(vp.height);
-      ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
-      await pg.render({canvasContext:ctx,viewport:vp}).promise;
+    geom=await pageGeom(p); if(tok!==vToken) return;
+    const vp1=makeVP(geom.view,1,geom.R);
+    const fit=Math.min((vStage.clientWidth-34)/vp1.width,(vStage.clientHeight-30)/vp1.height);
+    const scale=fit*zoom, dpr=Math.min(2,window.devicePixelRatio||1);
+    geom.scale=scale; geom.dpr=dpr; geom.vp=makeVP(geom.view,scale*dpr,geom.R);
+    const cw=Math.round(geom.vp.width), ch=Math.round(geom.vp.height);
+    for(const c of [vCanvas,vOverlay]){ c.width=cw; c.height=ch; c.style.width=(cw/dpr)+'px'; c.style.height=(ch/dpr)+'px'; }
+    vWrap.style.width=(cw/dpr)+'px'; vWrap.style.height=(ch/dpr)+'px';
+    vStage.classList.toggle('center',cw/dpr<vStage.clientWidth-34&&ch/dpr<vStage.clientHeight-30);
+    $('zoomLbl').textContent=Math.round(zoom*100)+'%';
+    const ctx=vCanvas.getContext('2d'); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
+    if(geom.pdf){
+      const vp=geom.pg.getViewport({scale:scale*dpr,rotation:geom.R});
+      await geom.pg.render({canvasContext:ctx,viewport:vp}).promise;
     }else{
-      const im=await new Promise((res,rej)=>{const x=new Image(); x.onload=()=>res(x); x.onerror=rej; x.src=f.imgs[p.index].url;});
-      const sw=p.rot%180!==0, W=sw?im.height:im.width, H=sw?im.width:im.height;
-      const s=Math.min(boxW/W,boxH/H,1.5)*dpr;
-      c.width=Math.round(W*s); c.height=Math.round(H*s);
-      ctx.translate(c.width/2,c.height/2); ctx.rotate(p.rot*Math.PI/180);
-      ctx.drawImage(im,-im.width*s/2,-im.height*s/2,im.width*s,im.height*s);
+      const im=await loadImg(geom.fi.url); if(tok!==vToken) return;
+      const L=geom.L, t=geom.vp.transform;
+      ctx.setTransform(t[0],t[1],t[2],t[3],t[4],t[5]);
+      ctx.translate(L.x,L.y+L.h); ctx.scale(1,-1); ctx.drawImage(im,0,0,L.w,L.h);
+      ctx.setTransform(1,0,0,1,0,0);
     }
     if(tok!==vToken) return;
-    vCanvas.width=c.width; vCanvas.height=c.height;
-    vCanvas.style.width=(c.width/dpr)+'px'; vCanvas.style.height=(c.height/dpr)+'px';
-    vCanvas.getContext('2d').drawImage(c,0,0);
+    drawOverlay();
   }
-  $('vClose').onclick=closeViewer;
-  $('vPrev').onclick=()=>{if(viewIdx>0){viewIdx--; drawViewer();}};
-  $('vNext').onclick=()=>{if(viewIdx<pages.length-1){viewIdx++; drawViewer();}};
-  $('vRotL').onclick=()=>{const p=pages[viewIdx]; p.rot=norm(p.rot-90); updateCard(p); drawViewer();};
-  $('vRotR').onclick=()=>{const p=pages[viewIdx]; p.rot=norm(p.rot+90); updateCard(p); drawViewer();};
-  $('vDel').onclick=()=>{pages.splice(viewIdx,1); renderGrid(); if(!pages.length) closeViewer(); else drawViewer();};
-  viewer.addEventListener('click',e=>{if(e.target===viewer||e.target===vStage) closeViewer();});
-  document.addEventListener('keydown',e=>{
-    if(viewer.hidden) return;
-    if(e.key==='Escape') closeViewer();
-    else if(e.key==='ArrowLeft') $('vNext').click();
-    else if(e.key==='ArrowRight') $('vPrev').click();
+  const imgCache=new Map();
+  function loadImg(url){ if(!imgCache.has(url)) imgCache.set(url,new Promise((res,rej)=>{const x=new Image(); x.onload=()=>res(x); x.onerror=rej; x.src=url;})); return imgCache.get(url); }
+
+  function drawOverlay(){
+    if(!geom||viewIdx<0) return;
+    const p=pages[viewIdx], vp=geom.vp, s=geom.scale*geom.dpr;
+    octx.setTransform(1,0,0,1,0,0); octx.clearRect(0,0,vOverlay.width,vOverlay.height);
+    for(const a of annotsOf(p)) drawAnnot(a,vp,s,geom.R);
+    if(drag&&drag.preview) drawAnnot(drag.preview,vp,s,geom.R);
+    if(sel&&!editing){
+      const a=sel;
+      octx.setTransform(1,0,0,1,0,0); octx.strokeStyle='#4152d4'; octx.lineWidth=1.5; octx.setLineDash([6,4]);
+      if(a.type==='ink'){ const b=inkBounds(a,vp); octx.strokeRect(b[0]-4,b[1]-4,b[2]-b[0]+8,b[3]-b[1]+8); }
+      else{ boxTransform(a,vp,s,geom.R); octx.strokeRect(-2,-2,a.w*s+4,a.h*s+4); octx.setLineDash([]); octx.fillStyle='#4152d4'; octx.fillRect(a.w*s-6,a.h*s-6,12,12); }
+      octx.setLineDash([]);
+    }
+  }
+  function boxTransform(a,vp,s,R){ const P=vp.toCanvas(a.ax,a.ay); octx.setTransform(1,0,0,1,P[0],P[1]); octx.rotate(norm(R-a.R)*Math.PI/180); }
+  function inkBounds(a,vp){ let x1=1e9,y1=1e9,x2=-1e9,y2=-1e9; for(const q of a.pts){const c=vp.toCanvas(q[0],q[1]); x1=Math.min(x1,c[0]);y1=Math.min(y1,c[1]);x2=Math.max(x2,c[0]);y2=Math.max(y2,c[1]);} return [x1,y1,x2,y2]; }
+  function drawAnnot(a,vp,s,R){
+    if(a.type==='ink'){
+      octx.setTransform(1,0,0,1,0,0); octx.strokeStyle=a.color; octx.lineWidth=a.width*s; octx.lineCap='round'; octx.lineJoin='round'; octx.beginPath();
+      a.pts.forEach((q,i)=>{const c=vp.toCanvas(q[0],q[1]); i?octx.lineTo(c[0],c[1]):octx.moveTo(c[0],c[1]);});
+      if(a.pts.length===1){const c=vp.toCanvas(a.pts[0][0],a.pts[0][1]); octx.lineTo(c[0]+0.1,c[1]);}
+      octx.stroke(); return;
+    }
+    boxTransform(a,vp,s,R);
+    if(a.type==='cover'){ octx.fillStyle=rgbToCss(a.color); octx.fillRect(0,0,a.w*s,a.h*s); }
+    else if(a.type==='image'){ const sg=sigs.get(a.sig); if(sg&&sg.img) octx.drawImage(sg.img,0,0,a.w*s,a.h*s); }
+    else if(a.type==='text'){
+      if(editing&&editing.a===a) return;
+      const rtl=firstStrongRtl(a.text); octx.font=canvasFont(a,a.size*s); octx.fillStyle=a.color; octx.textBaseline='alphabetic';
+      octx.direction=rtl?'rtl':'ltr'; octx.textAlign=rtl?'right':'left';
+      textLines(a).forEach((ln,i)=>octx.fillText(ln,rtl?a.w*s:0,(i*LH+BASE)*a.size*s));
+    }
+  }
+
+  /* ---- pointer handling ---- */
+  const evPt=e=>{const r=vOverlay.getBoundingClientRect(); return [(e.clientX-r.left)*geom.dpr,(e.clientY-r.top)*geom.dpr];};
+  const evPdf=e=>{const c=evPt(e); return geom.vp.toPdf(c[0],c[1]);};
+  function localUV(a,Q){ const ax=AXES[a.R]; const dx=Q[0]-a.ax, dy=Q[1]-a.ay; return [dx*ax.r[0]+dy*ax.r[1], dx*ax.d[0]+dy*ax.d[1]]; }
+  function hitTest(Q,tolPt){
+    const list=annotsOf(pages[viewIdx]);
+    for(let i=list.length-1;i>=0;i--){
+      const a=list[i];
+      if(a.type==='ink'){ if(a.pts.some(q=>Math.hypot(q[0]-Q[0],q[1]-Q[1])<tolPt+a.width)) return {a,part:'body'}; continue; }
+      const [u,v]=localUV(a,Q);
+      if(Math.abs(u-a.w)<tolPt&&Math.abs(v-a.h)<tolPt) return {a,part:'resize'};
+      if(u>=-tolPt&&u<=a.w+tolPt&&v>=-tolPt&&v<=a.h+tolPt) return {a,part:'body'};
+    }
+    return null;
+  }
+  vOverlay.addEventListener('pointerdown',e=>{
+    if(!geom||e.button>0) return; e.preventDefault(); vOverlay.setPointerCapture(e.pointerId);
+    const Q=evPdf(e), C=evPt(e), p=pages[viewIdx], tolPt=10/geom.scale;
+    if(editing){ commitEdit(); }
+    if(placing){ placeSig(placing,Q); return; }
+    if(tool==='pen'){ drag={kind:'pen',preview:{type:'ink',pts:[Q],color:$('penColor').value,width:parseFloat($('penSize').value)}}; drawOverlay(); return; }
+    if(tool==='text'){ addText(Q); return; }
+    if(tool==='edit'||tool==='cover'){ drag={kind:'box',start:C,cur:C}; return; }
+    const h=hitTest(Q,tolPt);
+    if(h){ const wasSel=sel===h.a; sel=h.a; $('delSel').disabled=false; drag={kind:h.part==='resize'?'resize':'move',a:h.a,start:Q,orig:JSON.parse(JSON.stringify(h.a)),wasSel}; vOverlay.className=h.part==='resize'?'c-resize':'c-move'; drawOverlay(); return; }
+    sel=null; $('delSel').disabled=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay();
   });
-  window.addEventListener('resize',()=>{if(!viewer.hidden) drawViewer();});
+  vOverlay.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    if(drag.kind==='pan'){ vStage.scrollLeft=drag.sl-(e.clientX-drag.x); vStage.scrollTop=drag.st-(e.clientY-drag.y); return; }
+    const Q=evPdf(e);
+    if(drag.kind==='pen'){ const pts=drag.preview.pts, l=pts[pts.length-1]; if(Math.hypot(Q[0]-l[0],Q[1]-l[1])>0.7/geom.scale) pts.push(Q); }
+    else if(drag.kind==='box'){ drag.cur=evPt(e); drawOverlay(); const s=drag.start,c=drag.cur; octx.setTransform(1,0,0,1,0,0); octx.strokeStyle='#4152d4'; octx.setLineDash([5,4]); octx.lineWidth=1.5; octx.strokeRect(Math.min(s[0],c[0]),Math.min(s[1],c[1]),Math.abs(c[0]-s[0]),Math.abs(c[1]-s[1])); octx.setLineDash([]); return; }
+    else if(drag.kind==='move'){ const dx=Q[0]-drag.start[0], dy=Q[1]-drag.start[1], a=drag.a, o=drag.orig; if(a.type==='ink') a.pts=o.pts.map(q=>[q[0]+dx,q[1]+dy]); else {a.ax=o.ax+dx; a.ay=o.ay+dy;} }
+    else if(drag.kind==='resize'){ const a=drag.a, [u,v]=localUV(a,Q); if(a.type==='image'){ a.w=Math.max(20,u); a.h=a.w*drag.orig.h/drag.orig.w; } else if(a.type==='text'){ a.w=Math.max(30,u); fitTextHeight(a); } else { a.w=Math.max(4,u); a.h=Math.max(4,v); } }
+    if(!dirtyRedraw){ dirtyRedraw=true; requestAnimationFrame(()=>{dirtyRedraw=false; drawOverlay();}); }
+  });
+  vOverlay.addEventListener('pointerup',async e=>{
+    if(!drag) return; const d=drag; drag=null; const p=pages[viewIdx];
+    if(d.kind==='pen'){ pushHist(p); annotsOf(p).push(d.preview); updateCard(p); }
+    else if(d.kind==='box'){ const s=d.start,c=d.cur; if(Math.abs(c[0]-s[0])>4&&Math.abs(c[1]-s[1])>4) await boxCreated(s,c); }
+    else if(d.kind==='move'||d.kind==='resize'){ const now=JSON.stringify(d.a); if(now!==JSON.stringify(d.orig)){ const list=annotsOf(p); const i=list.indexOf(d.a); list[i]=d.orig; pushHist(p); list[i]=d.a; } }
+    vOverlay.className=cursorFor();
+    if(d.kind==='move'||d.kind==='resize'){ sel=d.a; $('delSel').disabled=false; if(d.kind==='move'&&d.wasSel&&d.a.type==='text'&&JSON.stringify(d.a)===JSON.stringify(d.orig)) openEdit(d.a); }
+    drawOverlay();
+  });
+  vOverlay.addEventListener('dblclick',e=>{ if(!geom) return; const h=hitTest(evPdf(e),10/geom.scale); if(h&&h.a.type==='text') openEdit(h.a); });
+
+  /* ---- creating annotations ---- */
+  function screenBoxToAnnot(c1,c2){
+    const vp=geom.vp, s=geom.scale*geom.dpr;
+    const x1=Math.min(c1[0],c2[0]), y1=Math.min(c1[1],c2[1]), x2=Math.max(c1[0],c2[0]), y2=Math.max(c1[1],c2[1]);
+    const A=vp.toPdf(x1,y1); return {ax:A[0],ay:A[1],w:(x2-x1)/s,h:(y2-y1)/s,R:geom.R,px:[x1,y1,x2,y2]};
+  }
+  function sampleBg(px){
+    const ctx=vCanvas.getContext('2d'), pts=[[px[0]+2,px[1]+2],[px[2]-3,px[1]+2],[px[0]+2,px[3]-3],[px[2]-3,px[3]-3]]; let r=0,g=0,b=0,n=0;
+    for(const q of pts){ try{ const d=ctx.getImageData(Math.max(0,q[0]|0),Math.max(0,q[1]|0),1,1).data; r+=d[0];g+=d[1];b+=d[2];n++; }catch(e){} }
+    return n?[r/n/255,g/n/255,b/n/255]:[1,1,1];
+  }
+  async function boxCreated(c1,c2){
+    const p=pages[viewIdx], box=screenBoxToAnnot(c1,c2), color=sampleBg(box.px);
+    pushHist(p);
+    annotsOf(p).push({type:'cover',ax:box.ax,ay:box.ay,w:box.w,h:box.h,R:box.R,color});
+    if(tool==='cover'){ updateCard(p); drawOverlay(); return; }
+    let text='', size=parseFloat($('fontSize').value);
+    if(geom.pdf){
+      const ex=await extractText(box); if(ex){ text=ex.text; size=ex.size; }
+    }
+    const a={type:'text',ax:box.ax,ay:box.ay,w:box.w,h:box.h,R:box.R,text,size,color:'#000000',bold:false};
+    annotsOf(p).push(a); updateCard(p); setTool('select'); sel=a; openEdit(a);
+  }
+  async function extractText(box){
+    const vp=geom.vp, [x1,y1,x2,y2]=box.px;
+    const cs=[vp.toPdf(x1,y1),vp.toPdf(x2,y1),vp.toPdf(x1,y2),vp.toPdf(x2,y2)];
+    const X1=Math.min(...cs.map(c=>c[0])),X2=Math.max(...cs.map(c=>c[0])),Y1=Math.min(...cs.map(c=>c[1])),Y2=Math.max(...cs.map(c=>c[1]));
+    const tc=await geom.pg.getTextContent();
+    const items=tc.items.filter(it=>it.str&&it.str.trim()&&it.transform).map(it=>({str:it.str,x:it.transform[4],y:it.transform[5],w:it.width||0,h:it.height||0,size:Math.hypot(it.transform[2],it.transform[3])||it.height||12,dir:it.dir}))
+      .filter(it=>{const cx=it.x+it.w/2, cy=it.y+it.h/2; return cx>=X1&&cx<=X2&&cy>=Y1&&cy<=Y2;});
+    if(!items.length) return null;
+    const sizes=items.map(i=>i.size).sort((a,b)=>a-b), size=Math.round(sizes[sizes.length>>1]*10)/10;
+    items.sort((a,b)=>b.y-a.y);
+    const lines=[]; for(const it of items){ const L=lines[lines.length-1]; if(L&&Math.abs(L.y-it.y)<size*0.5) L.items.push(it); else lines.push({y:it.y,items:[it]}); }
+    const text=lines.map(L=>{
+      const rtl=L.items.some(i=>i.dir==='rtl'||hasHeb(i.str));
+      L.items.sort((a,b)=>rtl?b.x-a.x:a.x-b.x);
+      let s=''; let prev=null;
+      for(const it of L.items){ if(prev){ const gap=rtl?prev.x-(it.x+it.w):it.x-(prev.x+prev.w); if(gap>size*0.15&&!s.endsWith(' ')&&!it.str.startsWith(' ')) s+=' '; } s+=it.str; prev=it; }
+      return s.replace(/\s+/g,' ').trim();
+    }).join('\n');
+    return {text,size};
+  }
+  function addText(Q){
+    const p=pages[viewIdx], vp=geom.vp, s=geom.scale*geom.dpr, C=vp.toCanvas(Q[0],Q[1]);
+    const w=Math.min(260,vOverlay.width/s-12), m=6*s;
+    /* click in the right half: the box opens leftwards (Hebrew habit); otherwise rightwards. Always inside the page. */
+    let left=C[0]>vOverlay.width/2?C[0]-w*s:C[0];
+    left=Math.min(Math.max(m,left),vOverlay.width-w*s-m); const top=Math.min(Math.max(m,C[1]),vOverlay.height-m-parseFloat($('fontSize').value)*LH*s);
+    const A=vp.toPdf(left,top);
+    const a={type:'text',ax:A[0],ay:A[1],w,h:0,R:geom.R,text:'',size:parseFloat($('fontSize').value),color:$('penColor').value,bold:$('boldBtn').getAttribute('aria-pressed')==='true'};
+    fitTextHeight(a); pushHist(p); annotsOf(p).push(a); setTool('select'); sel=a; openEdit(a,true);
+  }
+
+  /* ---- inline text editing ---- */
+  function openEdit(a,isNew){
+    if(a.R!==geom.R){ vHint.textContent='כדי לערוך את הטקסט הזה, סובבו את העמוד חזרה לכיוון שבו הוא נכתב.'; return; }
+    commitEdit();
+    const vp=geom.vp, dpr=geom.dpr, sc=geom.scale, P=vp.toCanvas(a.ax,a.ay);
+    const ta=document.createElement('textarea'); ta.className='tedit'; ta.dir='auto'; ta.value=a.text; ta.spellcheck=false;
+    const leftRoom=(vOverlay.width-P[0])/dpr, w=Math.min(a.w*sc,Math.max(40,leftRoom-4));
+    Object.assign(ta.style,{left:(P[0]/dpr)+'px',top:(P[1]/dpr)+'px',width:w+'px',fontSize:(a.size*sc)+'px',fontWeight:a.bold?'700':'400',color:a.color,minHeight:(a.size*sc*LH)+'px'});
+    vWrap.appendChild(ta); editing={a,ta,isNew};
+    $('fontSize').value=String(a.size); $('penColor').value=a.color; $('boldBtn').setAttribute('aria-pressed',String(!!a.bold));
+    const grow=()=>{ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px';}; grow();
+    ta.addEventListener('input',grow);
+    ta.addEventListener('keydown',e=>{ if(e.key==='Escape'){e.preventDefault(); commitEdit();} e.stopPropagation(); });
+    vHint.textContent='כותבים ישירות. לחיצה מחוץ לתיבה מסיימת. Enter יורד שורה.';
+    drawOverlay(); ta.focus(); if(!isNew) ta.select(); setTimeout(()=>{ if(document.activeElement!==ta) ta.focus(); },0);
+  }
+  function commitEdit(){
+    if(!editing) return; const {a,ta}=editing, p=pages[viewIdx]; editing=null;
+    const before=JSON.stringify(a); a.text=ta.value.replace(/\s+$/,''); ta.remove();
+    if(!a.text.trim()){ const l=annotsOf(p), i=l.indexOf(a); if(i>=0) l.splice(i,1); if(sel===a) sel=null; }
+    else { fitTextHeight(a); if(JSON.stringify(a)!==before){ const l=annotsOf(p), i=l.indexOf(a); const cur=a; l[i]=JSON.parse(before); pushHist(p); l[i]=cur; } }
+    $('delSel').disabled=!sel; updateCard(p); drawOverlay();
+  }
+  /* style controls apply to the selected / editing text */
+  function applyStyle(){
+    const a=(editing&&editing.a)||(sel&&sel.type==='text'?sel:null); if(!a) return;
+    a.size=parseFloat($('fontSize').value); a.color=$('penColor').value; a.bold=$('boldBtn').getAttribute('aria-pressed')==='true'; fitTextHeight(a);
+    if(editing){ Object.assign(editing.ta.style,{fontSize:(a.size*geom.scale)+'px',fontWeight:a.bold?'700':'400',color:a.color}); editing.ta.style.height='auto'; editing.ta.style.height=editing.ta.scrollHeight+'px'; }
+    drawOverlay();
+  }
+  $('fontSize').addEventListener('change',applyStyle); $('penColor').addEventListener('input',applyStyle);
+  $('boldBtn').addEventListener('click',()=>{ const b=$('boldBtn'); b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true')); b.classList.toggle('on',b.getAttribute('aria-pressed')==='true'); applyStyle(); });
+  $('delSel').addEventListener('click',()=>{ if(!sel) return; const p=pages[viewIdx]; pushHist(p); const l=annotsOf(p); l.splice(l.indexOf(sel),1); sel=null; $('delSel').disabled=true; updateCard(p); drawOverlay(); });
+  $('undoBtn').addEventListener('click',undo);
+  function undo(){ commitEdit(); const p=pages[viewIdx]; if(!p||!p.hist||!p.hist.length) return; p.annots=JSON.parse(p.hist.pop()); sel=null; $('delSel').disabled=true; updateCard(p); drawOverlay(); }
+
+  /* ---- zoom ---- */
+  $('zoomIn').onclick=()=>{ zoom=Math.min(5,zoom*1.25); drawViewer(); };
+  $('zoomOut').onclick=()=>{ zoom=Math.max(0.4,zoom/1.25); drawViewer(); };
+  $('zoomFit').onclick=()=>{ zoom=1; drawViewer(); };
+  vStage.addEventListener('wheel',e=>{ if(!e.ctrlKey) return; e.preventDefault(); zoom=Math.min(5,Math.max(0.4,zoom*(e.deltaY<0?1.15:1/1.15))); drawViewer(); },{passive:false});
+
+  /* ---- signatures ---- */
+  const sigs=new Map(); let sigSeq=0;
+  const sigPad=$('sigPad'), sigCtx=sigPad.getContext('2d'); sigPad.width=1200; sigPad.height=400; let sigDrawing=false, sigDirty=false;
+  const padPt=e=>{const r=sigPad.getBoundingClientRect(); return [(e.clientX-r.left)*sigPad.width/r.width,(e.clientY-r.top)*sigPad.height/r.height];};
+  sigPad.addEventListener('pointerdown',e=>{sigPad.setPointerCapture(e.pointerId); sigDrawing=true; sigDirty=true; const q=padPt(e); sigCtx.lineWidth=5; sigCtx.lineCap='round'; sigCtx.lineJoin='round'; sigCtx.strokeStyle='#0b1b5c'; sigCtx.beginPath(); sigCtx.moveTo(q[0],q[1]); sigCtx.lineTo(q[0]+0.1,q[1]); sigCtx.stroke();});
+  sigPad.addEventListener('pointermove',e=>{ if(!sigDrawing) return; const q=padPt(e); sigCtx.lineTo(q[0],q[1]); sigCtx.stroke(); });
+  sigPad.addEventListener('pointerup',()=>{sigDrawing=false;}); sigPad.addEventListener('pointercancel',()=>{sigDrawing=false;});
+  function clearPad(){ sigCtx.clearRect(0,0,sigPad.width,sigPad.height); sigDirty=false; }
+  $('sigClear').onclick=clearPad;
+  $('sigCancel').onclick=()=>{ $('sigModal').hidden=true; };
+  function openSig(){ commitEdit(); clearPad(); renderSavedSigs(); $('sigModal').hidden=false; }
+  function trimCanvas(c){
+    const ctx=c.getContext('2d'), d=ctx.getImageData(0,0,c.width,c.height).data; let x1=c.width,y1=c.height,x2=-1,y2=-1;
+    for(let y=0;y<c.height;y++) for(let x=0;x<c.width;x++){ if(d[(y*c.width+x)*4+3]>10){ if(x<x1)x1=x; if(x>x2)x2=x; if(y<y1)y1=y; if(y>y2)y2=y; } }
+    if(x2<0) return null;
+    const pad=10, o=document.createElement('canvas'); o.width=x2-x1+1+2*pad; o.height=y2-y1+1+2*pad;
+    o.getContext('2d').drawImage(c,x1-pad,y1-pad,o.width,o.height,0,0,o.width,o.height); return o;
+  }
+  async function registerSig(dataURL,persist){
+    const img=await loadImg(dataURL); const id='s'+(++sigSeq);
+    const bytes=Uint8Array.from(atob(dataURL.split(',')[1]),ch=>ch.charCodeAt(0));
+    sigs.set(id,{id,url:dataURL,img,bytes,w:img.naturalWidth,h:img.naturalHeight});
+    if(persist){ try{ const arr=JSON.parse(localStorage.getItem('merge-sigs')||'[]'); arr.unshift(dataURL); localStorage.setItem('merge-sigs',JSON.stringify(arr.slice(0,6))); }catch(e){} }
+    return id;
+  }
+  $('sigUse').onclick=async()=>{ if(!sigDirty){ vHint.textContent=''; return; } const t=trimCanvas(sigPad); if(!t) return; const id=await registerSig(t.toDataURL('image/png'),true); $('sigModal').hidden=true; startPlacing(id); };
+  $('sigFile').addEventListener('change',async()=>{
+    const f=$('sigFile').files[0]; $('sigFile').value=''; if(!f) return;
+    let bmp; try{ bmp=await createImageBitmap(f); }catch(e){ vHint.textContent=BAD_IMG; return; }
+    const k=Math.min(1,1400/Math.max(bmp.width,bmp.height)), c=document.createElement('canvas'); c.width=Math.round(bmp.width*k); c.height=Math.round(bmp.height*k);
+    const ctx=c.getContext('2d'); ctx.drawImage(bmp,0,0,c.width,c.height);
+    const im=ctx.getImageData(0,0,c.width,c.height), d=im.data;
+    for(let i=0;i<d.length;i+=4){ const lum=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; d[i+3]=Math.min(d[i+3],Math.max(0,Math.min(255,(240-lum)*6))); }
+    ctx.putImageData(im,0,0); const t=trimCanvas(c); if(!t){ vHint.textContent='לא זוהתה חתימה בתמונה.'; return; }
+    const id=await registerSig(t.toDataURL('image/png'),true); $('sigModal').hidden=true; startPlacing(id);
+  });
+  function renderSavedSigs(){
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem('merge-sigs')||'[]'); }catch(e){}
+    const box=$('sigSaved'); box.innerHTML=''; $('sigSavedWrap').hidden=!arr.length;
+    arr.forEach((u,i)=>{ const d=document.createElement('div'); d.className='sig'; d.innerHTML='<img alt="חתימה שמורה"><button class="x" type="button" aria-label="מחיקה">×</button>'; d.querySelector('img').src=u;
+      d.addEventListener('click',async e=>{ if(e.target.classList.contains('x')){ arr.splice(i,1); try{localStorage.setItem('merge-sigs',JSON.stringify(arr));}catch(_){} renderSavedSigs(); return; } const id=await registerSig(u,false); $('sigModal').hidden=true; startPlacing(id); });
+      box.appendChild(d); });
+  }
+  function startPlacing(id){ setTool('select'); placing=id; vOverlay.className='c-place'; vHint.textContent='לוחצים על העמוד במקום שבו תופיע החתימה.'; }
+  function placeSig(id,Q){
+    const sg=sigs.get(id), p=pages[viewIdx]; placing=null; if(!sg) return;
+    const w=Math.min(160,geom.view[2]-geom.view[0]-20), h=w*sg.h/sg.w, ax=AXES[geom.R];
+    const a={type:'image',sig:id,w,h,R:geom.R,ax:Q[0]-ax.r[0]*w/2-ax.d[0]*h/2,ay:Q[1]-ax.r[1]*w/2-ax.d[1]*h/2};
+    pushHist(p); annotsOf(p).push(a); sel=a; setTool('select'); sel=a; $('delSel').disabled=false; updateCard(p); drawOverlay();
+    vHint.textContent='אפשר לגרור את החתימה למקום אחר או למשוך את הפינה כדי לשנות גודל.';
+  }
+
+  /* ---- navigation ---- */
+  const go=i=>{ commitEdit(); viewIdx=i; sel=null; placing=null; drawViewer(); };
+  $('vClose').onclick=closeViewer;
+  $('vPrev').onclick=()=>{ if(viewIdx>0) go(viewIdx-1); };
+  $('vNext').onclick=()=>{ if(viewIdx<pages.length-1) go(viewIdx+1); };
+  $('vRotL').onclick=()=>{ commitEdit(); const p=pages[viewIdx]; p.rot=norm(p.rot-90); updateCard(p); drawViewer(); };
+  $('vRotR').onclick=()=>{ commitEdit(); const p=pages[viewIdx]; p.rot=norm(p.rot+90); updateCard(p); drawViewer(); };
+  $('vDel').onclick=()=>{ commitEdit(); pages.splice(viewIdx,1); renderGrid(); if(!pages.length) closeViewer(); else { sel=null; drawViewer(); } };
+  document.addEventListener('keydown',e=>{
+    if(viewer.hidden) return; if(e.target&&(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='SELECT')) return;
+    if(e.key==='Escape'){ if(!$('sigModal').hidden){ $('sigModal').hidden=true; } else if(placing){ placing=null; setTool('select'); } else if(sel){ sel=null; $('delSel').disabled=true; drawOverlay(); } else closeViewer(); }
+    else if((e.key==='Delete'||e.key==='Backspace')&&sel){ e.preventDefault(); $('delSel').click(); }
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); }
+    else if(e.key==='ArrowLeft'&&!sel) $('vNext').click();
+    else if(e.key==='ArrowRight'&&!sel) $('vPrev').click();
+  });
+  window.addEventListener('resize',()=>{ if(!viewer.hidden){ commitEdit(); drawViewer(); } });
+
+  /* ---- export: draw annotations into the PDF ---- */
+  function bidiVisual(line){
+    const rtlBase=firstStrongRtl(line); const MIR={'(':')',')':'(','[':']',']':'[','{':'}','}':'{','<':'>','>':'<'};
+    const rev=s=>[...s].reverse().map(c=>MIR[c]||c).join('');
+    const LTR=/[A-Za-z0-9][A-Za-z0-9.,:%\/\-+@']*[A-Za-z0-9%]|[A-Za-z0-9]/g;
+    if(rtlBase){
+      const parts=[]; let last=0, m;
+      while((m=LTR.exec(line))){ if(m.index>last) parts.push({t:line.slice(last,m.index),ltr:false}); parts.push({t:m[0],ltr:true}); last=m.index+m[0].length; }
+      if(last<line.length) parts.push({t:line.slice(last),ltr:false});
+      return parts.reverse().map(p=>p.ltr?p.t:rev(p.t)).join('');
+    }
+    return line.replace(/[֐-׿][֐-׿\s"'\-]*[֐-׿]|[֐-׿]/g,s=>rev(s));
+  }
+  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages};
+  let fontCache=null;
+  async function exportFonts(doc){
+    if(fontCache&&fontCache.doc===doc) return fontCache;
+    await loadLib('libFontkit'); doc.registerFontkit(window.fontkit);
+    const b64=id=>Uint8Array.from(atob($(id).textContent.trim()),c=>c.charCodeAt(0));
+    const regular=await doc.embedFont(b64('fontHeebo'),{subset:true}), bold=await doc.embedFont(b64('fontHeeboBold'),{subset:true});
+    const safe=f=>{const set=new Set(f.getCharacterSet()); return s=>[...s].map(c=>set.has(c.codePointAt(0))?c:(c===' '?' ':'?')).join('');};
+    fontCache={doc,regular,bold,safeR:safe(regular),safeB:safe(bold)}; return fontCache;
+  }
+  async function drawAnnots(doc,pg,p){
+    const list=annotsOf(p); if(!list.length) return;
+    const {rgb,degrees:deg,LineCapStyle}=PDFLib;
+    for(const a of list){
+      if(a.type==='ink'){
+        const col=rgb(...hexToRgb(a.color));
+        if(a.pts.length<2){ pg.drawCircle({x:a.pts[0][0],y:a.pts[0][1],size:a.width/2,color:col}); continue; }
+        for(let i=1;i<a.pts.length;i++) pg.drawLine({start:{x:a.pts[i-1][0],y:a.pts[i-1][1]},end:{x:a.pts[i][0],y:a.pts[i][1]},thickness:a.width,color:col,lineCap:LineCapStyle.Round});
+        continue;
+      }
+      const ax=AXES[a.R], B={x:a.ax+ax.d[0]*a.h,y:a.ay+ax.d[1]*a.h};
+      if(a.type==='cover'){ pg.drawRectangle({x:B.x,y:B.y,width:a.w,height:a.h,color:rgb(a.color[0],a.color[1],a.color[2]),rotate:deg(a.R)}); }
+      else if(a.type==='image'){ const sg=sigs.get(a.sig); if(!sg) continue; if(!sg.pdf||sg.pdf.doc!==doc) sg.pdf={doc,img:await doc.embedPng(sg.bytes)}; pg.drawImage(sg.pdf.img,{x:B.x,y:B.y,width:a.w,height:a.h,rotate:deg(a.R)}); }
+      else if(a.type==='text'&&a.text.trim()){
+        const F=await exportFonts(doc), font=a.bold?F.bold:F.regular, safe=a.bold?F.safeB:F.safeR, col=rgb(...hexToRgb(a.color));
+        const rtl=firstStrongRtl(a.text), lines=wrapText(a.text,a.w,s=>font.widthOfTextAtSize(safe(s),a.size));
+        lines.forEach((ln,i)=>{
+          const vis=safe(bidiVisual(ln)); const lw=font.widthOfTextAtSize(vis,a.size);
+          /* fontkit reverses whole strings it detects as RTL, so hand it the mirror of what should appear */
+          const enc=firstStrongRtl(vis)?[...vis].reverse().join(''):vis;
+          const u=rtl?a.w-lw:0, v=(i*LH+BASE)*a.size;
+          pg.drawText(enc,{x:a.ax+ax.r[0]*u+ax.d[0]*v,y:a.ay+ax.r[1]*u+ax.d[1]*v,size:a.size,font,color:col,rotate:deg(a.R)});
+        });
+      }
+    }
+  }
 
   /* ---------- compression ----------
      Only image streams are re-encoded. Text, fonts and vector graphics are never touched,
@@ -655,22 +1109,22 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
         const cps=await out.copyPages(src,idx);
         idx.forEach((ix,k)=>copied.set(f.id+':'+ix,cps[k]));
       }
-      const A4=[595.28,841.89], M=24;
       for(const p of pages){
         const f=files.get(p.fileId);
         if(f.kind==='pdf'){
           const pg=copied.get(f.id+':'+p.index);
           pg.setRotation(degrees(norm((pg.getRotation().angle||0)+p.rot)));
           out.addPage(pg);
+          await drawAnnots(out,pg,p);
         }else{
           const fi=f.imgs[p.index], ek=f.id+':'+p.index;
           let img=embedded.get(ek);
           if(!img){img=fi.mime==='png'?await out.embedPng(fi.bytes):await out.embedJpg(fi.bytes); embedded.set(ek,img);}
-          const land=fi.w>fi.h, W=land?A4[1]:A4[0], H=land?A4[0]:A4[1];
-          const s=Math.min((W-2*M)/fi.w,(H-2*M)/fi.h), w=fi.w*s, h=fi.h*s;
-          const pg=out.addPage([W,H]);
-          pg.drawImage(img,{x:(W-w)/2,y:(H-h)/2,width:w,height:h});
+          const L=imageLayout(fi);
+          const pg=out.addPage([L.W,L.H]);
+          pg.drawImage(img,{x:L.x,y:L.y,width:L.w,height:L.h});
           if(p.rot) pg.setRotation(degrees(p.rot));
+          await drawAnnots(out,pg,p);
         }
       }
       const level=(document.querySelector('input[name=level]:checked')||{}).value||'none';

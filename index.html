@@ -150,7 +150,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 .vstage{flex:1;min-height:0;overflow:auto;position:relative;padding:14px 16px;display:grid;place-items:start center}
 .vstage.center{place-items:center}
 .vwrap{position:relative;flex:none;box-shadow:0 8px 34px rgba(0,0,0,.6);border-radius:3px;background:#fff;line-height:0}
-.vwrap canvas{display:block}
+.vwrap canvas{display:block;direction:ltr}
 #vOverlay{position:absolute;inset:0;touch-action:none}
 #vOverlay.c-pen{cursor:crosshair}#vOverlay.c-text{cursor:text}#vOverlay.c-box{cursor:crosshair}#vOverlay.c-place{cursor:copy}#vOverlay.c-move{cursor:move}#vOverlay.c-grab{cursor:grab}#vOverlay.c-resize{cursor:nwse-resize}
 .tedit{position:absolute;z-index:3;margin:0;padding:0;border:1.5px dashed var(--brand);background:rgba(255,255,255,.65);color:#000;font-family:var(--font);line-height:1.25;resize:none;overflow:hidden;outline:none;box-sizing:content-box;white-space:pre-wrap;word-break:break-word}
@@ -1689,7 +1689,7 @@ X.B(E,Y);return E}return J}())
     p.w=v1.width; p.h=v1.height;
     const s=260/Math.max(v1.width,v1.height), vp=pg.getViewport({scale:s});
     const c=document.createElement('canvas'); c.width=Math.ceil(vp.width); c.height=Math.ceil(vp.height);
-    const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
+    const ctx=c.getContext('2d'); ctx.direction='ltr'; ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
     await pg.render({canvasContext:ctx,viewport:vp}).promise;
     const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',0.85));
     p.thumb=URL.createObjectURL(blob);
@@ -1852,11 +1852,14 @@ X.B(E,Y);return E}return J}())
     if(cache.has(name)) return cache.get(name);
     const {PDFName,PDFDict,PDFArray,PDFNumber,PDFRef}=PDFLib; const L=o=>o instanceof PDFRef?res.context.lookup(o):o;
     const num=o=>{o=L(o); return o instanceof PDFNumber?o.asNumber():null;};
-    let info={bytes:1,w:new Map(),dw:500,asc:0.9,desc:-0.22};
+    let info={name,bytes:1,w:new Map(),dw:500,asc:0.9,desc:-0.22,tu:null,inv:null,family:'',base:''};
     try{
       const fonts=L(res.lookup(PDFName.of('Font'))); const fd=fonts&&L(fonts.get(PDFName.of(name)));
       if(fd instanceof PDFDict){
         const sub=String(fd.get(PDFName.of('Subtype'))); let desc=L(fd.get(PDFName.of('FontDescriptor')));
+        info.base=String(fd.get(PDFName.of('BaseFont'))||'').replace(/^\//,'').replace(/^[A-Z]{6}\+/,''); info.family=info.base.split(/[-,]/)[0];
+        const tus=L(fd.get(PDFName.of('ToUnicode')));
+        if(tus&&tus.dict){ try{ info.tu=parseToUnicode(new TextDecoder('latin1').decode(PDFLib.decodePDFRawStream(tus).decode())); }catch(e){} }
         if(sub==='/Type0'){
           info.bytes=2; const df=L(fd.get(PDFName.of('DescendantFonts'))); const cf=df&&L(df.get(0));
           if(cf instanceof PDFDict){ desc=L(cf.get(PDFName.of('FontDescriptor')))||desc; const dw=num(cf.get(PDFName.of('DW'))); if(dw!=null) info.dw=dw;
@@ -1867,10 +1870,35 @@ X.B(E,Y);return E}return J}())
           if(desc instanceof PDFDict){ const mw=num(desc.get(PDFName.of('MissingWidth'))); if(mw!=null) info.dw=mw; }
           if(!W){ info.dw=/Courier|Mono/i.test(String(fd.get(PDFName.of('BaseFont'))))?600:500; }
         }
+        if(desc instanceof PDFDict){ const ff=L(desc.get(PDFName.of('FontFile2'))); if(ff&&ff.dict&&info.bytes===2) info._ff2=ff; }
         if(desc instanceof PDFDict){ const a=num(desc.get(PDFName.of('Ascent'))), d=num(desc.get(PDFName.of('Descent'))); if(a) info.asc=Math.min(1.2,Math.abs(a)/1000); if(d) info.desc=-Math.min(0.5,Math.abs(d)/1000); }
       }
     }catch(e){}
+    if(!info.tu&&info.bytes===1){ info.tu=new Map(); for(let c=32;c<127;c++) info.tu.set(c,String.fromCharCode(c)); for(let c=160;c<256;c++) info.tu.set(c,String.fromCharCode(c)); }
+    if(info.tu){ info.inv=new Map(); for(const [c,s] of info.tu) if(s.length===1&&!info.inv.has(s)) info.inv.set(s,c); }
     cache.set(name,info); return info;
+  }
+  /* which glyph ids of an embedded TrueType subset actually have outlines (ToUnicode often lists more than the subset holds) */
+  function glyphHas(fi,code,ch){
+    if(ch===' '||!fi._ff2) return true;
+    if(fi._loca===undefined){
+      fi._loca=null;
+      try{
+        const b=PDFLib.decodePDFRawStream(fi._ff2).decode(), dv=new DataView(b.buffer,b.byteOffset,b.byteLength), n=dv.getUint16(4); const tabs={};
+        for(let i=0;i<n;i++){ const o=12+i*16; tabs[String.fromCharCode(b[o],b[o+1],b[o+2],b[o+3])]={off:dv.getUint32(o+8),len:dv.getUint32(o+12)}; }
+        if(tabs.head&&tabs.loca&&tabs.maxp){ const fmt=dv.getUint16(tabs.head.off+50), ng=dv.getUint16(tabs.maxp.off+4), loca=[]; for(let g=0;g<=ng;g++) loca.push(fmt?dv.getUint32(tabs.loca.off+g*4):dv.getUint16(tabs.loca.off+g*2)*2); fi._loca=loca; }
+      }catch(e){}
+    }
+    if(!fi._loca) return true; const l=fi._loca; return code+1<l.length&&l[code+1]-l[code]>0;
+  }
+  function parseToUnicode(s){
+    const m=new Map(), hx=h=>{ let o=''; for(let i=0;i+3<h.length;i+=4){ const u=parseInt(h.substr(i,4),16); o+=String.fromCharCode(u);} return o; };
+    for(const sec of s.split('beginbfchar').slice(1)){ const body=sec.split('endbfchar')[0]; for(const mm of body.matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]*)>/g)) m.set(parseInt(mm[1],16),hx(mm[2])); }
+    for(const sec of s.split('beginbfrange').slice(1)){ const body=sec.split('endbfrange')[0];
+      for(const mm of body.matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(<([0-9A-Fa-f]+)>|\[([^\]]*)\])/g)){ const lo=parseInt(mm[1],16), hi=parseInt(mm[2],16); if(hi-lo>65535) continue;
+        if(mm[4]!==undefined){ const base=hx(mm[4]); const last=base.charCodeAt(base.length-1); for(let c=lo;c<=hi;c++) m.set(c,base.slice(0,-1)+String.fromCharCode(last+c-lo)); }
+        else { const arr=[...mm[5].matchAll(/<([0-9A-Fa-f]*)>/g)].map(x=>hx(x[1])); arr.forEach((v,i)=>m.set(lo+i,v)); } } }
+    return m;
   }
   function xobjBox(res,name){
     const {PDFName,PDFArray,PDFRef}=PDFLib; const L=o=>o instanceof PDFRef?res.context.lookup(o):o;
@@ -1886,7 +1914,7 @@ X.B(E,Y);return E}return J}())
 
   /* walk the operators, tracking the CTM, and cut the stream into objects with page-space bounding boxes */
   function segmentObjects(buf,res){
-    const ops=parseOps(buf), objs=[], fcache=new Map();
+    const ops=parseOps(buf), objs=[], runs=[], fcache=new Map(); let fontName=null;
     let ctm=ID, stack=[], pathStart=null, pathBox=null, clip=false, textStart=null, textBox=null, textDepth=0;
     let Tm=ID,Tlm=ID,Tfs=0,Tc=0,Tw=0,Th=1,TL=0,Ts=0,font=null, qAtObj=0, cur=[0,0], sub=[0,0];
     const ext=(b,x,y)=>{ if(!b) return [x,y,x,y]; b[0]=Math.min(b[0],x);b[1]=Math.min(b[1],y);b[2]=Math.max(b[2],x);b[3]=Math.max(b[3],y); return b; };
@@ -1915,7 +1943,7 @@ X.B(E,Y);return E}return J}())
       }
       if(op==='BT'){textStart=i;textBox=null;Tm=ID;Tlm=ID;qAtObj=ctm;ctmAtText=ctm;continue;}
       if(op==='ET'){finishText(i);continue;}
-      if(op==='Tf'){font=fontInfo(res,String(A[0]),fcache);Tfs=+A[1]||0;continue;}
+      if(op==='Tf'){fontName=String(A[0]);font=fontInfo(res,fontName,fcache);Tfs=+A[1]||0;continue;}
       if(op==='Tc'){Tc=+A[0]||0;continue;} if(op==='Tw'){Tw=+A[0]||0;continue;} if(op==='Tz'){Th=(+A[0]||100)/100;continue;}
       if(op==='TL'){TL=+A[0]||0;continue;} if(op==='Ts'){Ts=+A[0]||0;continue;}
       if(op==='Td'){Tlm=M.mul([1,0,0,1,+A[0]||0,+A[1]||0],Tlm);Tm=Tlm;continue;}
@@ -1926,18 +1954,21 @@ X.B(E,Y);return E}return J}())
         if(op==="'"||op==='"'){ if(op==='"'){Tw=+A[0]||0;Tc=+A[1]||0;} Tlm=M.mul([1,0,0,1,0,-TL],Tlm);Tm=Tlm; }
         const items=op==='TJ'?(Array.isArray(A[0])?A[0]:[]):[A[A.length-1]];
         if(!font) font=fontInfo(res,'__none__',fcache);
-        let x=0; const trm=M.mul(M.mul([Tfs*Th,0,0,Tfs,0,Ts],Tm),ctm);
+        let x=0; const trm=M.mul(M.mul([Tfs*Th,0,0,Tfs,0,Ts],Tm),ctm); const codes=[]; let txt='';
         for(const it of items){
           if(typeof it==='number'){x-=it/1000;continue;}
           if(!(it instanceof Uint8Array)) continue;
           const nb=font.bytes;
           for(let k=0;k+nb-1<it.length;k+=nb){
             const code=nb===2?(it[k]<<8)|it[k+1]:it[k]; const w=font.w.has(code)?font.w.get(code):font.dw;
-            x+=w/1000+(Tfs?(Tc+(code===32&&nb===1?Tw:0))/Tfs:0);
+            x+=w/1000+(Tfs?(Tc+(code===32&&nb===1?Tw:0))/Tfs:0); codes.push(code); txt+=font.tu&&font.tu.has(code)?font.tu.get(code):'\uFFFD';
           }
         }
-        if(Tfs){ [[0,font.desc],[x,font.desc],[0,font.asc],[x,font.asc]].forEach(q=>{const p=M.ap(trm,q[0],q[1]); textBox=ext(textBox,p[0],p[1]);}); }
+        let rbox=null;
+        if(Tfs){ [[0,font.desc],[x,font.desc],[0,font.asc],[x,font.asc]].forEach(q=>{const p=M.ap(trm,q[0],q[1]); textBox=ext(textBox,p[0],p[1]); rbox=ext(rbox,p[0],p[1]);}); }
+        const tmBefore=Tm.slice();
         Tm=M.mul([1,0,0,1,x*Tfs*Th,0],Tm);
+        if(Tfs&&codes.length&&textStart!==null) runs.push({k:i,op,font:fontName,fi:font,Tfs,Th,Tc,Tw,tm:tmBefore,tlm:Tlm.slice(),tmAfter:Tm.slice(),ctm,box:rbox,size:Math.hypot(trm[2],trm[3]),x0:M.ap(trm,0,0),x1:M.ap(trm,x,0),text:txt,codes,obj:objs.length});
         continue;
       }
       if(op==='Do'){
@@ -1949,26 +1980,35 @@ X.B(E,Y);return E}return J}())
     }
     /* an object whose range has unbalanced q/Q can't be wrapped safely */
     objs.forEach((ob,idx)=>{ ob.i=idx; let d=0; for(let k=ob.a;k<=ob.b;k++){ if(ops[k].op==='q')d++; if(ops[k].op==='Q')d--; if(d<0) break; } ob.locked=d!==0; if(ob.kind==='text') ob.ctm=ob.ctmM; });
-    return {ops,objs};
+    const names=[]; try{ const fonts=res.lookup(PDFLib.PDFName.of('Font')); const fd=fonts instanceof PDFLib.PDFRef?res.context.lookup(fonts):fonts; if(fd&&fd.keys) fd.keys().forEach(k=>names.push(k.asString().slice(1))); }catch(e){}
+    const fontOf=n=>fontInfo(res,n,fcache);
+    return {ops,objs,runs,fontNames:names,fontOf};
   }
   /* rebuild the content stream with the edits applied */
-  function rebuildContent(buf,ops,objs,edits){
-    const parts=[]; let pos=0; const slice=(s,e)=>buf.subarray(s,e); const enc=new TextEncoder();
+  function rebuildContent(buf,ops,objs,edits,textEdits){
+    const repl=new Map(), skip=new Set();
+    for(const te of (textEdits||[])){ for(const k in te.repl) repl.set(+k,te.repl[k]); for(const k of te.skip) skip.add(k); }
+    const objAt=new Map(); objs.forEach(ob=>{ if(edits[ob.i]&&!ob.locked) objAt.set(ob.a,ob); });
+    const parts=[]; let pos=0; const enc=new TextEncoder(); const push=x=>parts.push(typeof x==='string'?enc.encode(x):x);
     const f=n=>Number.isInteger(n)?String(n):n.toFixed(4).replace(/\.?0+$/,'');
-    for(const ob of objs){
-      const ed=edits[ob.i]; if(!ed||ob.locked) continue;
-      const s=ops[ob.a].s, e=ops[ob.b].e;
-      parts.push(slice(pos,s));
-      const stateBytes=[]; for(let k=ob.a;k<=ob.b;k++) if(STATE_OPS.has(ops[k].op)) stateBytes.push(slice(ops[k].s,ops[k].e),enc.encode('\n'));
-      if(!ed.del){
-        const sc=ed.s||1, T=[sc,0,0,sc,(ed.px||0)*(1-sc)+(ed.dx||0),(ed.py||0)*(1-sc)+(ed.dy||0)];
-        const Mo=M.mul(M.mul(M.inv(ob.ctm),T),ob.ctm);
-        parts.push(enc.encode('\nq '+Mo.map(f).join(' ')+' cm\n'),slice(s,e),enc.encode('\nQ\n'));
+    const emitOp=j=>{ const o=ops[j]; push(buf.subarray(pos,o.s)); pos=o.e;
+      if(skip.has(j)){ if(o.op==="'"||o.op==='"') push(' T* '); return; }
+      if(repl.has(j)){ push('\n'+repl.get(j)+'\n'); return; }
+      push(buf.subarray(o.s,o.e)); };
+    for(let k=0;k<ops.length;k++){
+      const ob=objAt.get(k);
+      if(ob){
+        const ed=edits[ob.i], stateBytes=[]; for(let j=ob.a;j<=ob.b;j++) if(STATE_OPS.has(ops[j].op)) stateBytes.push(buf.subarray(ops[j].s,ops[j].e));
+        push(buf.subarray(pos,ops[ob.a].s)); pos=ops[ob.a].s;
+        if(!ed.del){ const sc=ed.s||1, T=[sc,0,0,sc,(ed.px||0)*(1-sc)+(ed.dx||0),(ed.py||0)*(1-sc)+(ed.dy||0)]; const Mo=M.mul(M.mul(M.inv(ob.ctm),T),ob.ctm);
+          push('\nq '+Mo.map(f).join(' ')+' cm\n'); for(let j=ob.a;j<=ob.b;j++) emitOp(j); push('\nQ\n'); }
+        else pos=ops[ob.b].e;
+        for(const sb of stateBytes){ push(sb); push('\n'); }
+        k=ob.b; continue;
       }
-      parts.push(...stateBytes);
-      pos=e;
+      emitOp(k);
     }
-    parts.push(slice(pos,buf.length));
+    push(buf.subarray(pos));
     const len=parts.reduce((n,x)=>n+x.length,0), out=new Uint8Array(len); let o=0; for(const x of parts){out.set(x,o);o+=x.length;}
     return out;
   }
@@ -1990,13 +2030,13 @@ X.B(E,Y);return E}return J}())
     const doc=await libDoc(f), pg=doc.getPage(p.index), buf=pageContentBytes(doc,pg);
     const res=pg.node.Resources(); const r=segmentObjects(buf,res||doc.context.obj({})); r.buf=buf; p.objs=r; return r;
   }
-  const hasObjEdits=p=>p.objEdits&&Object.keys(p.objEdits).length>0;
-  function applyObjEdits(doc,pg,p){ if(!hasObjEdits(p)||!p.objs) return; setPageContent(doc,pg,rebuildContent(p.objs.buf,p.objs.ops,p.objs.objs,p.objEdits)); }
+  const hasObjEdits=p=>(p.objEdits&&Object.keys(p.objEdits).length>0)||(p.textEdits&&p.textEdits.length>0);
+  function applyObjEdits(doc,pg,p){ if(!hasObjEdits(p)||!p.objs) return; setPageContent(doc,pg,rebuildContent(p.objs.buf,p.objs.ops,p.objs.objs,p.objEdits||{},p.textEdits||[])); }
   /* a pdf.js page of this page with the object edits applied, for preview and thumbnails */
   async function renderPage(p){
     const f=files.get(p.fileId);
     if(!hasObjEdits(p)) return f.pdf.doc.getPage(p.index+1);
-    const key=JSON.stringify(p.objEdits);
+    const key=JSON.stringify([p.objEdits,p.textEdits]);
     if(p.mod&&p.mod.key===key) return p.mod.page;
     await pageObjects(p);
     const src=await libDoc(f), d=await PDFDocument.create(); const [cp]=await d.copyPages(src,[p.index]); applyObjEdits(d,cp,p); d.addPage(cp);
@@ -2012,6 +2052,68 @@ X.B(E,Y);return E}return J}())
     return [Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];
   }
   const OBJ_NAMES={path:'קו / צורה',text:'טקסט',image:'תמונה',form:'אובייקט מוטמע (טופס)'};
+
+  /* ---- in-place text replacement: the new text is written with the document's own fonts ---- */
+  function runsInBox(p,X1,Y1,X2,Y2){
+    const R=p.objs.runs, used=new Set((p.textEdits||[]).flatMap(te=>te.runs));
+    const sel=R.filter(r=>!used.has(r.k)&&r.fi.tu&&r.box&&((r.box[0]+r.box[2])/2>=X1&&(r.box[0]+r.box[2])/2<=X2&&(r.box[1]+r.box[3])/2>=Y1&&(r.box[1]+r.box[3])/2<=Y2));
+    if(!sel.length) return null;
+    sel.sort((a,b)=>b.x0[1]-a.x0[1]);
+    const lines=[]; for(const r of sel){ const L=lines[lines.length-1]; if(L&&Math.abs(L.y-r.x0[1])<r.size*0.5) L.runs.push(r); else lines.push({y:r.x0[1],runs:[r]}); }
+    let box=null; const ext=(b,x,y)=>b?[Math.min(b[0],x),Math.min(b[1],y),Math.max(b[2],x),Math.max(b[3],y)]:[x,y,x,y];
+    for(const L of lines){
+      L.runs.sort((a,b)=>a.x0[0]-b.x0[0]);
+      let vis='', prev=null;
+      for(const r of L.runs){ if(prev){ const gap=r.x0[0]-prev.x1[0]; if(gap>r.size*0.15&&!vis.endsWith(' ')&&!r.text.startsWith(' ')) vis+=' '; } vis+=r.text; prev=r; r.box&&[[r.box[0],r.box[1]],[r.box[2],r.box[3]]].forEach(q=>box=ext(box,q[0],q[1])); }
+      vis=vis.replace(/\uFFFD/g,'');
+      L.visual=vis; L.logical=hasHeb(vis)?bidiVisual(vis):vis; L.rtl=hasHeb(vis); L.size=L.runs[0].size;
+    }
+    const sizes=lines.map(L=>L.size).sort((a,b)=>a-b);
+    return {lines,text:lines.map(L=>L.logical.replace(/\s+/g,' ').trim()).join('\n'),size:Math.round(sizes[sizes.length>>1]*10)/10,box};
+  }
+  function encodeWithFonts(p,text,primary){
+    const F=p.objs.fontOf, fam=F(primary).family;
+    const cands=[primary,...p.objs.fontNames.filter(n=>n!==primary&&F(n).family===fam),...p.objs.fontNames.filter(n=>n!==primary&&F(n).family!==fam)];
+    const segs=[];
+    for(const ch of text){
+      let fn=null; for(const n of cands){ const fi=F(n); if(fi.inv&&fi.inv.has(ch)&&glyphHas(fi,fi.inv.get(ch),ch)){ fn=n; break; } }
+      if(!fn){ if(ch===' '){ continue; } return {missing:ch}; }
+      const s=segs[segs.length-1]; if(s&&s.font===fn) s.chars.push(ch); else segs.push({font:fn,chars:[ch]});
+    }
+    return {segs};
+  }
+  function buildTextEdits(p,lines,newLines){
+    const f=n=>Number.isInteger(n)?String(n):(+n).toFixed(4).replace(/\.?0+$/,'');
+    const F=p.objs.fontOf, edits=[], hex=(fi,c)=>fi.bytes===2?c.toString(16).padStart(4,'0'):c.toString(16).padStart(2,'0');
+    for(let i=0;i<lines.length;i++){
+      const L=lines[i], txt=(newLines[i]||'').trim(), first=L.runs[0], last=L.runs[L.runs.length-1];
+      const te={repl:{},skip:[],runs:L.runs.map(r=>r.k)};
+      const tm=first.tm, Tfs=first.Tfs, Th=first.Th, Tc=first.Tc, Tw=first.Tw;
+      const a=tm[0],b=tm[1], e2=last.tmAfter[4]-tm[4], f2=last.tmAfter[5]-tm[5], oldSpan=(e2*a+f2*b)/(a*a+b*b||1);
+      let body='', newW=0;
+      if(txt){
+        const vis=hasHeb(txt)?bidiVisual(txt):txt;
+        const primary=L.runs.slice().sort((x,y)=>y.codes.length-x.codes.length)[0].font;
+        const enc=encodeWithFonts(p,vis,primary); if(enc.missing) return {missing:enc.missing};
+        for(const sg of enc.segs){ const fi=F(sg.font); let h='';
+          for(const ch of sg.chars){ const c=fi.inv.get(ch); h+=hex(fi,c); const w=fi.w.has(c)?fi.w.get(c):fi.dw; newW+=(w/1000*Tfs+Tc+(c===32&&fi.bytes===1?Tw:0))*Th; }
+          body+='/'+sg.font+' '+f(Tfs)+' Tf <'+h+'> Tj '; }
+        body+='/'+first.font+' '+f(Tfs)+' Tf';
+      }
+      const shift=L.rtl?oldSpan-newW:0;
+      /* Tm also resets the line matrix, so set Tm to the original line matrix and move the pen with a TJ adjustment instead */
+      const proj=(m,lm)=>((m[4]-lm[4])*lm[0]+(m[5]-lm[5])*lm[1])/(lm[0]*lm[0]+lm[1]*lm[1]||1);
+      const pen=(lm,tpos,fs,th)=>lm.map(f).join(' ')+' Tm'+(Math.abs(tpos)>1e-6&&fs?' [ '+f(-tpos*1000/(fs*th))+' ] TJ':'');
+      const pre=(first.op==="'"||first.op==='"')?'T* ':'';
+      const start=pen(first.tlm,proj(first.tm,first.tlm)+shift,Tfs,Th);
+      const restore=pen(last.tlm,proj(last.tmAfter,last.tlm),last.Tfs,last.Th);
+      te.repl[first.k]=pre+start+' '+body+(first===last?' '+restore:'');
+      for(const r of L.runs){ if(r!==first&&r!==last) te.skip.push(r.k); }
+      if(last!==first) te.repl[last.k]=(last.op==="'"||last.op==='"'?'T* ':'')+restore;
+      edits.push(te);
+    }
+    return {edits};
+  }
 
   /* ==================== viewer + editor ====================
      Annotations live in PDF user space (points, y-up) so they survive zoom and rotation.
@@ -2057,7 +2159,7 @@ X.B(E,Y);return E}return J}())
       toPdf:(X,Y)=>{const x=X-t[4],y=Y-t[5]; return [(t[3]*x-t[2]*y)/det,(-t[1]*x+t[0]*y)/det];}};
   }
   const annotsOf=p=>(p.annots||(p.annots=[]));
-  function pushHist(p){ (p.hist||(p.hist=[])).push(JSON.stringify({a:annotsOf(p),o:p.objEdits||{}})); if(p.hist.length>40) p.hist.shift(); }
+  function pushHist(p){ (p.hist||(p.hist=[])).push(JSON.stringify({a:annotsOf(p).filter(x=>!x.inplace),o:p.objEdits||{},t:p.textEdits||[]})); if(p.hist.length>40) p.hist.shift(); }
   function refreshThumb(p){ p.thumb=null; updateCard(p); queueThumb(p); }
 
   /* ---- text layout shared by screen and export ---- */
@@ -2113,10 +2215,10 @@ X.B(E,Y);return E}return J}())
     vWrap.style.width=(cw/dpr)+'px'; vWrap.style.height=(ch/dpr)+'px';
     vStage.classList.toggle('center',cw/dpr<vStage.clientWidth-34&&ch/dpr<vStage.clientHeight-30);
     $('zoomLbl').textContent=Math.round(zoom*100)+'%';
-    const ctx=vCanvas.getContext('2d'); ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
+    const ctx=vCanvas.getContext('2d'); ctx.setTransform(1,0,0,1,0,0); ctx.direction='ltr'; ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
     if(geom.pdf){
       const vp=geom.pg.getViewport({scale:scale*dpr,rotation:geom.R});
-      await geom.pg.render({canvasContext:ctx,viewport:vp}).promise;
+      try{ await geom.pg.render({canvasContext:ctx,viewport:vp}).promise; }catch(e){ if(!(e&&e.name==='RenderingCancelledException')) throw e; return; }
     }else{
       const im=await loadImg(geom.fi.url); if(tok!==vToken) return;
       const L=geom.L, t=geom.vp.transform;
@@ -2164,7 +2266,7 @@ X.B(E,Y);return E}return J}())
     if(a.type==='cover'){ octx.fillStyle=rgbToCss(a.color); octx.fillRect(0,0,a.w*s,a.h*s); }
     else if(a.type==='image'){ const sg=sigs.get(a.sig); if(sg&&sg.img) octx.drawImage(sg.img,0,0,a.w*s,a.h*s); }
     else if(a.type==='text'){
-      if(editing&&editing.a===a) return;
+      if((editing&&editing.a===a)||a.inplace) return;
       const rtl=firstStrongRtl(a.text); octx.font=canvasFont(a,a.size*s); octx.fillStyle=a.color; octx.textBaseline='alphabetic';
       octx.direction=rtl?'rtl':'ltr'; octx.textAlign=rtl?'right':'left';
       textLines(a).forEach((ln,i)=>octx.fillText(ln,rtl?a.w*s:0,(i*LH+BASE)*a.size*s));
@@ -2260,6 +2362,18 @@ X.B(E,Y);return E}return J}())
     annotsOf(p).push({type:'cover',ax:box.ax,ay:box.ay,w:box.w,h:box.h,R:box.R,color});
     if(tool==='cover'){ updateCard(p); drawOverlay(); return; }
     let text='', size=parseFloat($('fontSize').value);
+    if(geom.pdf&&p.objs){
+      const vp=geom.vp, [x1,y1,x2,y2]=box.px, cs=[vp.toPdf(x1,y1),vp.toPdf(x2,y1),vp.toPdf(x1,y2),vp.toPdf(x2,y2)];
+      const ip=runsInBox(p,Math.min(...cs.map(c=>c[0])),Math.min(...cs.map(c=>c[1])),Math.max(...cs.map(c=>c[0])),Math.max(...cs.map(c=>c[1])));
+      if(ip){
+        annotsOf(p).pop(); /* no cover needed: the original text will be replaced in the file */
+        const ax=AXES[geom.R], W=Math.abs(ip.box[2]-ip.box[0]), H=Math.abs(ip.box[3]-ip.box[1]);
+        const corner=geom.R===0?[ip.box[0],ip.box[3]]:geom.R===90?[ip.box[0],ip.box[1]]:geom.R===180?[ip.box[2],ip.box[1]]:[ip.box[2],ip.box[3]];
+        const sw=geom.R%180!==0, a={type:'text',ax:corner[0],ay:corner[1],w:(sw?H:W)+ip.size,h:sw?W:H,R:geom.R,text:ip.text,size:ip.size,color:'#000000',bold:false,inplace:{lines:ip.lines,text:ip.text}};
+        if(geom.R===0) a.ax-=ip.size; 
+        annotsOf(p).push(a); updateCard(p); setTool('select'); sel=a; openEdit(a); vHint.textContent='עריכה בגופן המקורי של המסמך. לחיצה מחוץ לתיבה שומרת.'; return;
+      }
+    }
     if(geom.pdf){
       const ex=await extractText(box); if(ex){ text=ex.text; size=ex.size; }
     }
@@ -2315,6 +2429,18 @@ X.B(E,Y);return E}return J}())
   }
   function commitEdit(){
     if(!editing) return; const {a,ta}=editing, p=pages[viewIdx]; editing=null;
+    if(a.inplace){
+      const txt=ta.value.replace(/\s+$/,''); ta.remove(); const l=annotsOf(p); const i=l.indexOf(a); if(i>=0) l.splice(i,1); if(sel===a) sel=null;
+      if(txt===a.inplace.text){ updateCard(p); drawOverlay(); return; }
+      const r=buildTextEdits(p,a.inplace.lines,txt.split('\n'));
+      if(r.edits){ pushHist(p); (p.textEdits||(p.textEdits=[])).push(...r.edits); refreshThumb(p); drawViewer(); vHint.textContent='הטקסט עודכן בתוך הקובץ, בגופן המקורי.'; return; }
+      /* a glyph the document's fonts don't have: fall back to cover + retype */
+      const ax=AXES[a.R], box=a.inplace.lines.reduce((b,L)=>L.runs.reduce((bb,r)=>bb?[Math.min(bb[0],r.box[0]),Math.min(bb[1],r.box[1]),Math.max(bb[2],r.box[2]),Math.max(bb[3],r.box[3])]:r.box.slice(),b),null);
+      pushHist(p);
+      const cv={type:'cover',ax:a.R===0?box[0]:a.ax,ay:a.R===0?box[3]:a.ay,w:box[2]-box[0],h:box[3]-box[1],R:0,color:[1,1,1]};
+      l.push(cv); const ta2=Object.assign({},a,{text:txt}); delete ta2.inplace; fitTextHeight(ta2); l.push(ta2); sel=ta2;
+      vHint.textContent='האות "'+r.missing+'" לא קיימת בגופנים של המסמך, אז הטקסט נכתב מעל כיסוי.'; $('delSel').disabled=false; updateCard(p); drawOverlay(); return;
+    }
     const before=JSON.stringify(a); a.text=ta.value.replace(/\s+$/,''); ta.remove();
     if(!a.text.trim()){ const l=annotsOf(p), i=l.indexOf(a); if(i>=0) l.splice(i,1); if(sel===a) sel=null; }
     else { fitTextHeight(a); if(JSON.stringify(a)!==before){ const l=annotsOf(p), i=l.indexOf(a); const cur=a; l[i]=JSON.parse(before); pushHist(p); l[i]=cur; } }
@@ -2331,7 +2457,7 @@ X.B(E,Y);return E}return J}())
   $('boldBtn').addEventListener('click',()=>{ const b=$('boldBtn'); b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true')); b.classList.toggle('on',b.getAttribute('aria-pressed')==='true'); applyStyle(); });
   $('delSel').addEventListener('click',()=>{ const p=pages[viewIdx]; if(osel!==null){ pushHist(p); (p.objEdits||(p.objEdits={}))[osel]={del:true}; osel=null; $('delSel').disabled=true; refreshThumb(p); drawViewer(); return; } if(!sel) return; pushHist(p); const l=annotsOf(p); l.splice(l.indexOf(sel),1); sel=null; $('delSel').disabled=true; updateCard(p); drawOverlay(); });
   $('undoBtn').addEventListener('click',undo);
-  function undo(){ commitEdit(); const p=pages[viewIdx]; if(!p||!p.hist||!p.hist.length) return; const h=JSON.parse(p.hist.pop()); const objChanged=JSON.stringify(h.o)!==JSON.stringify(p.objEdits||{}); p.annots=h.a; p.objEdits=h.o; sel=null; osel=null; $('delSel').disabled=true; if(objChanged){ refreshThumb(p); drawViewer(); } else { updateCard(p); drawOverlay(); } }
+  function undo(){ commitEdit(); const p=pages[viewIdx]; if(!p||!p.hist||!p.hist.length) return; const h=JSON.parse(p.hist.pop()); const objChanged=JSON.stringify([h.o,h.t])!==JSON.stringify([p.objEdits||{},p.textEdits||[]]); p.annots=h.a; p.objEdits=h.o; p.textEdits=h.t; sel=null; osel=null; $('delSel').disabled=true; if(objChanged){ refreshThumb(p); drawViewer(); } else { updateCard(p); drawOverlay(); } }
 
   /* ---- zoom ---- */
   $('zoomIn').onclick=()=>{ zoom=Math.min(5,zoom*1.25); drawViewer(); };
@@ -2422,7 +2548,7 @@ X.B(E,Y);return E}return J}())
     }
     return line.replace(/[֐-׿][֐-׿\s"'\-]*[֐-׿]|[֐-׿]/g,s=>rev(s));
   }
-  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages,segmentObjects,parseOps};
+  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages,segmentObjects,parseOps,runsInBox,buildTextEdits};
   let fontCache=null;
   async function exportFonts(doc){
     if(fontCache&&fontCache.doc===doc) return fontCache;

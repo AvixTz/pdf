@@ -274,6 +274,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     </div>
     <div class="grp">
       <button class="tool" type="button" id="undoBtn" title="ביטול (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg></button>
+      <button class="tool" type="button" id="layerBtn" title="שכבה של האובייקט שהוזז" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg><span id="layerLbl">מעל הכל</span></button>
       <button class="tool del" type="button" id="delSel" title="מחיקת הפריט שנבחר (Delete)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
     </div>
     <span class="sep"></span>
@@ -1915,19 +1916,23 @@ X.B(E,Y);return E}return J}())
   /* walk the operators, tracking the CTM, and cut the stream into objects with page-space bounding boxes */
   function segmentObjects(buf,res){
     const ops=parseOps(buf), objs=[], runs=[], fcache=new Map(); let fontName=null;
+    /* last-set state operator of each kind, so a moved object can be redrawn on top with the same colors, line style and font */
+    let stateNow=new Map(), stateStack=[]; const SKEY={g:'fill',rg:'fill',k:'fill',sc:'fill',scn:'fill',G:'stroke',RG:'stroke',K:'stroke',SC:'stroke',SCN:'stroke'};
+    const snap=()=>[...stateNow.values()].sort((a,b)=>a-b); let stateAtObj=[];
     let ctm=ID, stack=[], pathStart=null, pathBox=null, clip=false, textStart=null, textBox=null, textDepth=0;
     let Tm=ID,Tlm=ID,Tfs=0,Tc=0,Tw=0,Th=1,TL=0,Ts=0,font=null, qAtObj=0, cur=[0,0], sub=[0,0];
     const ext=(b,x,y)=>{ if(!b) return [x,y,x,y]; b[0]=Math.min(b[0],x);b[1]=Math.min(b[1],y);b[2]=Math.max(b[2],x);b[3]=Math.max(b[3],y); return b; };
     const extP=(b,x,y)=>{const p=M.ap(ctm,x,y); return ext(b,p[0],p[1]);};
-    const finishText=(i)=>{ if(textStart!==null){ if(textBox) objs.push({kind:'text',a:textStart,b:i,box:textBox,ctm:qAtObj,ctmM:ctmAtText}); textStart=null; textBox=null; } };
+    const finishText=(i)=>{ if(textStart!==null){ if(textBox) objs.push({kind:'text',a:textStart,b:i,box:textBox,ctm:qAtObj,ctmM:ctmAtText,state:stateAtObj}); textStart=null; textBox=null; } };
     let ctmAtText=ID;
     for(let i=0;i<ops.length;i++){
       const o=ops[i], A=o.args, op=o.op;
-      if(op==='q'){stack.push(ctm);continue;}
-      if(op==='Q'){ctm=stack.pop()||ID;continue;}
+      if(STATE_OPS.has(op)) stateNow.set(SKEY[op]||op,i);
+      if(op==='q'){stack.push(ctm);stateStack.push(new Map(stateNow));continue;}
+      if(op==='Q'){ctm=stack.pop()||ID;stateNow=stateStack.pop()||stateNow;continue;}
       if(op==='cm'&&A.length===6){ctm=M.mul(A,ctm);continue;}
       if(PATH_OPS.has(op)){
-        if(pathStart===null){pathStart=i;pathBox=null;qAtObj=ctm;}
+        if(pathStart===null){pathStart=i;pathBox=null;qAtObj=ctm;stateAtObj=snap();}
         if(op==='m'){cur=[A[0],A[1]];sub=cur;pathBox=extP(pathBox,A[0],A[1]);}
         else if(op==='l'){cur=[A[0],A[1]];pathBox=extP(pathBox,A[0],A[1]);}
         else if(op==='c'){for(let k=0;k<6;k+=2)pathBox=extP(pathBox,A[k],A[k+1]);cur=[A[4],A[5]];}
@@ -1938,10 +1943,10 @@ X.B(E,Y);return E}return J}())
       }
       if(op==='W'||op==='W*'){clip=true;continue;}
       if(PAINT_OPS.has(op)){
-        if(pathStart!==null&&pathBox&&op!=='n'&&!clip) objs.push({kind:'path',a:pathStart,b:i,box:pathBox,ctm:qAtObj,paint:op});
+        if(pathStart!==null&&pathBox&&op!=='n'&&!clip) objs.push({kind:'path',a:pathStart,b:i,box:pathBox,ctm:qAtObj,paint:op,state:stateAtObj});
         pathStart=null;pathBox=null;clip=false;continue;
       }
-      if(op==='BT'){textStart=i;textBox=null;Tm=ID;Tlm=ID;qAtObj=ctm;ctmAtText=ctm;continue;}
+      if(op==='BT'){textStart=i;textBox=null;Tm=ID;Tlm=ID;qAtObj=ctm;ctmAtText=ctm;stateAtObj=snap();continue;}
       if(op==='ET'){finishText(i);continue;}
       if(op==='Tf'){fontName=String(A[0]);font=fontInfo(res,fontName,fcache);Tfs=+A[1]||0;continue;}
       if(op==='Tc'){Tc=+A[0]||0;continue;} if(op==='Tw'){Tw=+A[0]||0;continue;} if(op==='Tz'){Th=(+A[0]||100)/100;continue;}
@@ -1974,19 +1979,19 @@ X.B(E,Y);return E}return J}())
       if(op==='Do'){
         const xb=xobjBox(res,String(A[0])); const m=M.mul(xb.mat,ctm); let b=null;
         [[xb.box[0],xb.box[1]],[xb.box[2],xb.box[1]],[xb.box[0],xb.box[3]],[xb.box[2],xb.box[3]]].forEach(q=>{const p=M.ap(m,q[0],q[1]); b=ext(b,p[0],p[1]);});
-        objs.push({kind:xb.kind,a:i,b:i,box:b,ctm}); continue;
+        objs.push({kind:xb.kind,a:i,b:i,box:b,ctm,state:snap()}); continue;
       }
-      if(op==='INLINE_IMAGE'){ let b=null; [[0,0],[1,0],[0,1],[1,1]].forEach(q=>{const p=M.ap(ctm,q[0],q[1]); b=ext(b,p[0],p[1]);}); objs.push({kind:'image',a:i,b:i,box:b,ctm}); continue; }
+      if(op==='INLINE_IMAGE'){ let b=null; [[0,0],[1,0],[0,1],[1,1]].forEach(q=>{const p=M.ap(ctm,q[0],q[1]); b=ext(b,p[0],p[1]);}); objs.push({kind:'image',a:i,b:i,box:b,ctm,state:snap()}); continue; }
     }
     /* an object whose range has unbalanced q/Q can't be wrapped safely */
     objs.forEach((ob,idx)=>{ ob.i=idx; let d=0; for(let k=ob.a;k<=ob.b;k++){ if(ops[k].op==='q')d++; if(ops[k].op==='Q')d--; if(d<0) break; } ob.locked=d!==0; if(ob.kind==='text') ob.ctm=ob.ctmM; });
     const names=[]; try{ const fonts=res.lookup(PDFLib.PDFName.of('Font')); const fd=fonts instanceof PDFLib.PDFRef?res.context.lookup(fonts):fonts; if(fd&&fd.keys) fd.keys().forEach(k=>names.push(k.asString().slice(1))); }catch(e){}
     const fontOf=n=>fontInfo(res,n,fcache);
-    return {ops,objs,runs,fontNames:names,fontOf};
+    return {ops,objs,runs,fontNames:names,fontOf,ctmEnd:ctm};
   }
   /* rebuild the content stream with the edits applied */
-  function rebuildContent(buf,ops,objs,edits,textEdits){
-    const repl=new Map(), skip=new Set();
+  function rebuildContent(buf,ops,objs,edits,textEdits,ctmEnd){
+    const repl=new Map(), skip=new Set(), onTop=[];
     for(const te of (textEdits||[])){ for(const k in te.repl) repl.set(+k,te.repl[k]); for(const k of te.skip) skip.add(k); }
     const objAt=new Map(); objs.forEach(ob=>{ if(edits[ob.i]&&!ob.locked) objAt.set(ob.a,ob); });
     const parts=[]; let pos=0; const enc=new TextEncoder(); const push=x=>parts.push(typeof x==='string'?enc.encode(x):x);
@@ -2000,15 +2005,25 @@ X.B(E,Y);return E}return J}())
       if(ob){
         const ed=edits[ob.i], stateBytes=[]; for(let j=ob.a;j<=ob.b;j++) if(STATE_OPS.has(ops[j].op)) stateBytes.push(buf.subarray(ops[j].s,ops[j].e));
         push(buf.subarray(pos,ops[ob.a].s)); pos=ops[ob.a].s;
-        if(!ed.del){ const sc=ed.s||1, T=[sc,0,0,sc,(ed.px||0)*(1-sc)+(ed.dx||0),(ed.py||0)*(1-sc)+(ed.dy||0)]; const Mo=M.mul(M.mul(M.inv(ob.ctm),T),ob.ctm);
+        const sc=ed.s||1, T=[sc,0,0,sc,(ed.px||0)*(1-sc)+(ed.dx||0),(ed.py||0)*(1-sc)+(ed.dy||0)];
+        if(ed.del||ed.layer!=='keep'){ pos=ops[ob.b].e; if(!ed.del) onTop.push({ob,T}); }
+        else { const Mo=M.mul(M.mul(M.inv(ob.ctm),T),ob.ctm);
           push('\nq '+Mo.map(f).join(' ')+' cm\n'); for(let j=ob.a;j<=ob.b;j++) emitOp(j); push('\nQ\n'); }
-        else pos=ops[ob.b].e;
         for(const sb of stateBytes){ push(sb); push('\n'); }
         k=ob.b; continue;
       }
       emitOp(k);
     }
     push(buf.subarray(pos));
+    /* moved objects are redrawn at the end of the stream, i.e. above everything else */
+    const opBytes=j=>{ const o=ops[j]; if(skip.has(j)) return (o.op==="'"||o.op==='"')?' T* ':''; if(repl.has(j)) return '\n'+repl.get(j)+'\n'; return buf.subarray(o.s,o.e); };
+    for(const {ob,T} of onTop){
+      const Mc=M.mul(M.mul(T,ob.ctm),M.inv(ctmEnd||ID));
+      push('\nq '+Mc.map(f).join(' ')+' cm\n');
+      for(const j of (ob.state||[])){ if(j<ob.a||j>ob.b){ push(buf.subarray(ops[j].s,ops[j].e)); push('\n'); } }
+      for(let j=ob.a;j<=ob.b;j++){ push(opBytes(j)); push('\n'); }
+      push('Q\n');
+    }
     const len=parts.reduce((n,x)=>n+x.length,0), out=new Uint8Array(len); let o=0; for(const x of parts){out.set(x,o);o+=x.length;}
     return out;
   }
@@ -2031,7 +2046,7 @@ X.B(E,Y);return E}return J}())
     const res=pg.node.Resources(); const r=segmentObjects(buf,res||doc.context.obj({})); r.buf=buf; p.objs=r; return r;
   }
   const hasObjEdits=p=>(p.objEdits&&Object.keys(p.objEdits).length>0)||(p.textEdits&&p.textEdits.length>0);
-  function applyObjEdits(doc,pg,p){ if(!hasObjEdits(p)||!p.objs) return; setPageContent(doc,pg,rebuildContent(p.objs.buf,p.objs.ops,p.objs.objs,p.objEdits||{},p.textEdits||[])); }
+  function applyObjEdits(doc,pg,p){ if(!hasObjEdits(p)||!p.objs) return; setPageContent(doc,pg,rebuildContent(p.objs.buf,p.objs.ops,p.objs.objs,p.objEdits||{},p.textEdits||[],p.objs.ctmEnd)); }
   /* a pdf.js page of this page with the object edits applied, for preview and thumbnails */
   async function renderPage(p){
     const f=files.get(p.fileId);
@@ -2183,7 +2198,7 @@ X.B(E,Y);return E}return J}())
   /* ---- open / close ---- */
   function openViewer(i){ viewIdx=i; viewer.hidden=false; document.body.style.overflow='hidden'; zoom=1; sel=null; placing=null; setTool('select'); drawViewer(); }
   function closeViewer(){ commitEdit(); viewer.hidden=true; document.body.style.overflow=''; viewIdx=-1; renderGrid(); }
-  function setTool(t){ tool=t; placing=null; if(t!=='select') sel=null; if(t!=='obj'){ osel=null; ohover=null; } commitEdit();
+  function setTool(t){ tool=t; placing=null; if(t!=='select') sel=null; if(t!=='obj'){ osel=null; ohover=null; $('layerBtn').hidden=true; } commitEdit();
     viewer.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
     vOverlay.className=cursorFor();
     const H={select:'לחיצה על פריט בוחרת אותו. גוררים כדי להזיז, הפינה כדי לשנות גודל. לחיצה כפולה על טקסט פותחת לעריכה.',
@@ -2304,8 +2319,8 @@ X.B(E,Y);return E}return J}())
     if(tool==='edit'||tool==='cover'){ drag={kind:'box',start:C,cur:C}; return; }
     if(tool==='obj'){
       const P=pages[viewIdx]; if(!P.objs) return; const hit=objHit(Q,tolPt);
-      if(hit===null){ osel=null; $('delSel').disabled=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay(); return; }
-      osel=hit; $('delSel').disabled=false; const ob=P.objs.objs[hit], ed0=Object.assign({dx:0,dy:0,s:1,px:0,py:0},(P.objEdits||{})[hit]||{});
+      if(hit===null){ osel=null; $('delSel').disabled=true; $('layerBtn').hidden=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay(); return; }
+      osel=hit; $('delSel').disabled=false; syncLayerBtn(); const ob=P.objs.objs[hit], ed0=Object.assign({dx:0,dy:0,s:1,px:0,py:0},(P.objEdits||{})[hit]||{});
       if(ob.locked){ vHint.textContent='האובייקט הזה כולל מצבים גרפיים מקוננים ואי אפשר להזיז אותו בבטחה. אפשר לכסות אותו בכלי "מחיקה".'; drag=null; drawOverlay(); return; }
       const b=objBoxNow(ob,ed0); const corners=[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]];
       let ci=-1; corners.forEach((c,k)=>{ if(Math.hypot(c[0]-Q[0],c[1]-Q[1])<tolPt) ci=k; });
@@ -2336,7 +2351,8 @@ X.B(E,Y);return E}return J}())
     else if(d.kind==='box'){ const s=d.start,c=d.cur; if(Math.abs(c[0]-s[0])>4&&Math.abs(c[1]-s[1])>4) await boxCreated(s,c); }
     else if(d.kind==='omove'||d.kind==='oresize'){
       const changed=JSON.stringify(d.ed)!==JSON.stringify(d.orig);
-      if(changed){ pushHist(p); (p.objEdits||(p.objEdits={}))[d.i]=d.ed; refreshThumb(p); vOverlay.className=cursorFor(); await drawViewer(); return; }
+      if(changed){ pushHist(p); (p.objEdits||(p.objEdits={}))[d.i]=d.ed; refreshThumb(p); vOverlay.className=cursorFor(); syncLayerBtn(); await drawViewer(); return; }
+      syncLayerBtn();
     }
     else if(d.kind==='move'||d.kind==='resize'){ const now=JSON.stringify(d.a); if(now!==JSON.stringify(d.orig)){ const list=annotsOf(p); const i=list.indexOf(d.a); list[i]=d.orig; pushHist(p); list[i]=d.a; } }
     vOverlay.className=cursorFor();
@@ -2456,6 +2472,8 @@ X.B(E,Y);return E}return J}())
   $('fontSize').addEventListener('change',applyStyle); $('penColor').addEventListener('input',applyStyle);
   $('boldBtn').addEventListener('click',()=>{ const b=$('boldBtn'); b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true')); b.classList.toggle('on',b.getAttribute('aria-pressed')==='true'); applyStyle(); });
   $('delSel').addEventListener('click',()=>{ const p=pages[viewIdx]; if(osel!==null){ pushHist(p); (p.objEdits||(p.objEdits={}))[osel]={del:true}; osel=null; $('delSel').disabled=true; refreshThumb(p); drawViewer(); return; } if(!sel) return; pushHist(p); const l=annotsOf(p); l.splice(l.indexOf(sel),1); sel=null; $('delSel').disabled=true; updateCard(p); drawOverlay(); });
+  function syncLayerBtn(){ const p=pages[viewIdx]; const ed=osel!==null&&p&&p.objEdits?p.objEdits[osel]:null; const show=!!(ed&&!ed.del); $('layerBtn').hidden=!show; if(show) $('layerLbl').textContent=ed.layer==='keep'?'שכבה מקורית':'מעל הכל'; }
+  $('layerBtn').addEventListener('click',()=>{ const p=pages[viewIdx]; const ed=p.objEdits&&p.objEdits[osel]; if(!ed) return; pushHist(p); ed.layer=ed.layer==='keep'?undefined:'keep'; if(!ed.layer) delete ed.layer; syncLayerBtn(); refreshThumb(p); drawViewer(); vHint.textContent=ed.layer==='keep'?'האובייקט חוזר לשכבה שבה היה במקור. אובייקטים שמצוירים אחריו עלולים לכסות אותו.':'האובייקט מצויר מעל כל שאר הדף.'; });
   $('undoBtn').addEventListener('click',undo);
   function undo(){ commitEdit(); const p=pages[viewIdx]; if(!p||!p.hist||!p.hist.length) return; const h=JSON.parse(p.hist.pop()); const objChanged=JSON.stringify([h.o,h.t])!==JSON.stringify([p.objEdits||{},p.textEdits||[]]); p.annots=h.a; p.objEdits=h.o; p.textEdits=h.t; sel=null; osel=null; $('delSel').disabled=true; if(objChanged){ refreshThumb(p); drawViewer(); } else { updateCard(p); drawOverlay(); } }
 

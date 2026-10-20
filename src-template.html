@@ -264,6 +264,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
       <button class="tool" type="button" data-tool="sig" title="חתימה"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17c3-6 5-8 6-6s-1 7 1 7 3-6 5-5 1 4 3 4 2-2 3-2"/><path d="M3 21h18"/></svg><span>חתימה</span></button>
       <button class="tool" type="button" data-tool="edit" title="עריכת טקסט קיים"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg><span>עריכת טקסט</span></button>
       <button class="tool" type="button" data-tool="cover" title="מחיקת אזור (כיסוי)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16a1 1 0 0 1 0-1.4L13.6 4a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4L11 19"/><path d="M6.5 12.5l5 5"/></svg><span>מחיקה</span></button>
+      <button class="tool" type="button" data-tool="obj" title="הזזה, שינוי גודל ומחיקה של קווים, ריבועים, טקסט ותמונות שכבר בדף"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/><path d="m8 6 4-4 4 4M8 18l4 4 4-4M6 8l-4 4 4 4M18 8l4 4-4 4"/></svg><span>אובייקטים</span></button>
     </div>
     <div class="grp" id="styleGrp">
       <input type="color" id="penColor" value="#1d4ed8" title="צבע" aria-label="צבע">
@@ -345,6 +346,10 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([wtxt],{type:'text/javascript'}));
   }catch(e){}
 
+  /* When the tool is served from a website, pdf.js can fetch metric-compatible fallback fonts (Liberation Sans, with Hebrew)
+     and CMaps from the folders next to index.html. From a local file it uses the fonts installed on the computer. */
+  const HOSTED=/^https?:$/.test(location.protocol);
+  const PDFJS_OPTS=HOSTED?{isEvalSupported:false,standardFontDataUrl:new URL('standard_fonts/',location.href).href,cMapUrl:new URL('cmaps/',location.href).href,cMapPacked:true}:{isEvalSupported:false};
   const COLORS=['#2b6fd6','#d9822b','#8a4fd6','#1f9d6b','#d6457f','#1a9bb5','#6a9a1f','#c9472f'];
   const I={
     rotL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
@@ -380,7 +385,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
         if(rec.kind==='pdf'){
           const buf=await f.arrayBuffer();
           let doc;
-          try{ doc=await pdfjsLib.getDocument({data:new Uint8Array(buf.slice(0)),isEvalSupported:false}).promise; }
+          try{ doc=await pdfjsLib.getDocument(Object.assign({data:new Uint8Array(buf.slice(0))},PDFJS_OPTS)).promise; }
           catch(e){ throw new Error(e&&e.name==='PasswordException'?'הקובץ מוגן בסיסמה':'לא ניתן לקרוא את הקובץ'); }
           rec.pdf={buf,doc,count:doc.numPages};
           for(let i=0;i<doc.numPages;i++){ const p={key:++pseq,fileId:rec.id,index:i,rot:0,w:0,h:0,thumb:null}; pages.push(p); queueThumb(p); }
@@ -459,7 +464,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   function queueThumb(p){ tq=tq.then(()=>renderThumb(p)).catch(()=>{}); }
   async function renderThumb(p){
     const f=files.get(p.fileId); if(!f||!pages.includes(p)) return;
-    const pg=await f.pdf.doc.getPage(p.index+1);
+    const pg=await renderPage(p);
     const v1=pg.getViewport({scale:1});
     p.w=v1.width; p.h=v1.height;
     const s=260/Math.max(v1.width,v1.height), vp=pg.getViewport({scale:s});
@@ -495,7 +500,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     return '<button class="thumb" type="button" data-act="view" aria-label="הגדלת עמוד '+(i+1)+'">'
       +(p.thumb?'<img alt="" draggable="false" src="'+p.thumb+'" style="transform:rotate('+p.rot+'deg)">':'<span class="loading">טוען...</span>')
       +'<span class="num">'+(i+1)+'</span>'
-      +(p.annots&&p.annots.length?'<span class="pbadge">✎ '+p.annots.length+'</span>':'')
+      +((p.annots&&p.annots.length)||(p.objEdits&&Object.keys(p.objEdits).length)?'<span class="pbadge">✎ '+((p.annots?p.annots.length:0)+(p.objEdits?Object.keys(p.objEdits).length:0))+'</span>':'')
       +(land===null?'':'<span class="orient">'+(land?'לרוחב':'לאורך')+'</span>')
       +'</button>'
       +'<div class="src"><i style="background:'+f.color+'"></i><span></span></div>'
@@ -563,6 +568,231 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   document.addEventListener('dragleave',e=>{if(!e.relatedTarget) drop.classList.remove('over');});
   document.addEventListener('drop',e=>{drop.classList.remove('over'); if(!dragKey&&hasFiles(e)){e.preventDefault(); addFiles(e.dataTransfer.files);}});
 
+  /* ==================== object editing: move / scale / delete the page's own drawing objects ====================
+     The page content stream is parsed into objects (paths, text blocks, images, embedded forms).
+     An edit wraps the object's original operators in q <matrix> cm ... Q, so the file stays valid and
+     untouched objects keep their exact bytes. */
+  const M={
+    mul:(m,n)=>[m[0]*n[0]+m[1]*n[2],m[0]*n[1]+m[1]*n[3],m[2]*n[0]+m[3]*n[2],m[2]*n[1]+m[3]*n[3],m[4]*n[0]+m[5]*n[2]+n[4],m[4]*n[1]+m[5]*n[3]+n[5]],
+    inv:m=>{const d=m[0]*m[3]-m[1]*m[2]; return [m[3]/d,-m[1]/d,-m[2]/d,m[0]/d,(m[2]*m[5]-m[3]*m[4])/d,(m[1]*m[4]-m[0]*m[5])/d];},
+    ap:(m,x,y)=>[m[0]*x+m[2]*y+m[4],m[1]*x+m[3]*y+m[5]]
+  };
+  const ID=[1,0,0,1,0,0];
+  const WS=new Set([0,9,10,12,13,32]), DELIM=new Set([40,41,60,62,91,93,123,125,47,37]);
+  function tokenize(buf){
+    const toks=[]; let i=0; const n=buf.length;
+    const isReg=c=>!WS.has(c)&&!DELIM.has(c);
+    while(i<n){
+      const c=buf[i];
+      if(WS.has(c)){i++;continue;}
+      if(c===37){while(i<n&&buf[i]!==10&&buf[i]!==13)i++;continue;}
+      const s=i;
+      if(c===47){i++;while(i<n&&isReg(buf[i]))i++;toks.push({t:'name',v:dec(buf,s+1,i),s,e:i});continue;}
+      if(c===40){let depth=1;i++;const out=[];while(i<n&&depth){const d=buf[i];if(d===92){i++;const e=buf[i];const map={110:10,114:13,116:9,98:8,102:12,40:40,41:41,92:92};if(e in map){out.push(map[e]);i++;}else if(e>=48&&e<=55){let o=0,k=0;while(k<3&&buf[i]>=48&&buf[i]<=55){o=o*8+(buf[i]-48);i++;k++;}out.push(o&255);}else if(e===13){i++;if(buf[i]===10)i++;}else if(e===10){i++;}else{out.push(e);i++;}continue;}if(d===40)depth++;else if(d===41){depth--;if(!depth){i++;break;}}out.push(d);i++;}toks.push({t:'str',v:new Uint8Array(out),s,e:i});continue;}
+      if(c===60&&buf[i+1]===60){i+=2;toks.push({t:'op',v:'<<',s,e:i});continue;}
+      if(c===62&&buf[i+1]===62){i+=2;toks.push({t:'op',v:'>>',s,e:i});continue;}
+      if(c===60){i++;let h='';while(i<n&&buf[i]!==62){const d=buf[i];if(!WS.has(d))h+=String.fromCharCode(d);i++;}i++;if(h.length%2)h+='0';const out=new Uint8Array(h.length/2);for(let k=0;k<out.length;k++)out[k]=parseInt(h.substr(k*2,2),16);toks.push({t:'str',v:out,s,e:i});continue;}
+      if(c===91){i++;toks.push({t:'op',v:'[',s,e:i});continue;}
+      if(c===93){i++;toks.push({t:'op',v:']',s,e:i});continue;}
+      if(c===123||c===125){i++;continue;}
+      i++;while(i<n&&isReg(buf[i]))i++;
+      const w=dec(buf,s,i);
+      if(/^[+-.\d]/.test(w)&&!isNaN(parseFloat(w))) toks.push({t:'num',v:parseFloat(w),s,e:i}); else toks.push({t:'op',v:w,s,e:i});
+    }
+    return toks;
+  }
+  function dec(buf,s,e){let o='';for(let k=s;k<e;k++)o+=String.fromCharCode(buf[k]);return o;}
+  /* group tokens into operators with operands; BI..EI inline images become one op */
+  function parseOps(buf){
+    const toks=tokenize(buf), ops=[]; let operands=[], start=null, depth=0, arr=[];
+    for(let k=0;k<toks.length;k++){
+      const tk=toks[k];
+      if(start===null) start=tk.s;
+      if(tk.t!=='op'){ (depth?arr:operands).push(tk.v); continue; }
+      if(tk.v==='['){depth++;arr=[];continue;}
+      if(tk.v===']'){depth--;operands.push(arr);arr=[];continue;}
+      if(tk.v==='<<'||tk.v==='>>'){continue;}
+      if(depth){ continue; }
+      if(tk.v==='BI'){
+        let j=k+1; while(j<toks.length&&toks[j].v!=='ID') j++;
+        let p=toks[j]?toks[j].e+1:buf.length;
+        while(p<buf.length){ if(buf[p]===69&&buf[p+1]===73&&(p+2>=buf.length||WS.has(buf[p+2]))&&WS.has(buf[p-1])) break; p++; }
+        ops.push({op:'INLINE_IMAGE',args:[],s:tk.s,e:Math.min(buf.length,p+2)});
+        let kk=j; while(kk<toks.length&&toks[kk].s<p+2) kk++; k=kk-1; operands=[]; start=null; continue;
+      }
+      ops.push({op:tk.v,args:operands,s:start,e:tk.e}); operands=[]; start=null;
+    }
+    return ops;
+  }
+  const PATH_OPS=new Set(['m','l','c','v','y','h','re']), PAINT_OPS=new Set(['S','s','f','F','f*','B','B*','b','b*','n']);
+  const STATE_OPS=new Set(['w','J','j','M','d','ri','i','gs','g','rg','k','G','RG','K','cs','CS','sc','scn','SC','SCN','Tf','Tc','Tw','Tz','TL','Ts','Tr']);
+
+  /* font metrics from the page resources, enough for text bounding boxes */
+  function fontInfo(res,name,cache){
+    if(cache.has(name)) return cache.get(name);
+    const {PDFName,PDFDict,PDFArray,PDFNumber,PDFRef}=PDFLib; const L=o=>o instanceof PDFRef?res.context.lookup(o):o;
+    const num=o=>{o=L(o); return o instanceof PDFNumber?o.asNumber():null;};
+    let info={bytes:1,w:new Map(),dw:500,asc:0.9,desc:-0.22};
+    try{
+      const fonts=L(res.lookup(PDFName.of('Font'))); const fd=fonts&&L(fonts.get(PDFName.of(name)));
+      if(fd instanceof PDFDict){
+        const sub=String(fd.get(PDFName.of('Subtype'))); let desc=L(fd.get(PDFName.of('FontDescriptor')));
+        if(sub==='/Type0'){
+          info.bytes=2; const df=L(fd.get(PDFName.of('DescendantFonts'))); const cf=df&&L(df.get(0));
+          if(cf instanceof PDFDict){ desc=L(cf.get(PDFName.of('FontDescriptor')))||desc; const dw=num(cf.get(PDFName.of('DW'))); if(dw!=null) info.dw=dw;
+            const W=L(cf.get(PDFName.of('W'))); if(W instanceof PDFArray){ const a=W.asArray().map(L); for(let i=0;i<a.length;){ const c=num(a[i]); const nx=a[i+1]; if(nx instanceof PDFArray){ nx.asArray().map(L).forEach((w,k)=>info.w.set(c+k,num(w))); i+=2; } else { const c2=num(nx), w=num(a[i+2]); for(let k=c;k<=c2&&k-c<65536;k++) info.w.set(k,w); i+=3; } } } }
+        }else{
+          const fc=num(fd.get(PDFName.of('FirstChar')))||0; const W=L(fd.get(PDFName.of('Widths')));
+          if(W instanceof PDFArray){ W.asArray().map(L).forEach((w,k)=>{const v=num(w); if(v!=null) info.w.set(fc+k,v);}); }
+          if(desc instanceof PDFDict){ const mw=num(desc.get(PDFName.of('MissingWidth'))); if(mw!=null) info.dw=mw; }
+          if(!W){ info.dw=/Courier|Mono/i.test(String(fd.get(PDFName.of('BaseFont'))))?600:500; }
+        }
+        if(desc instanceof PDFDict){ const a=num(desc.get(PDFName.of('Ascent'))), d=num(desc.get(PDFName.of('Descent'))); if(a) info.asc=Math.min(1.2,Math.abs(a)/1000); if(d) info.desc=-Math.min(0.5,Math.abs(d)/1000); }
+      }
+    }catch(e){}
+    cache.set(name,info); return info;
+  }
+  function xobjBox(res,name){
+    const {PDFName,PDFArray,PDFRef}=PDFLib; const L=o=>o instanceof PDFRef?res.context.lookup(o):o;
+    try{
+      const xo=L(res.lookup(PDFName.of('XObject'))); const st=xo&&L(xo.get(PDFName.of(name))); const d=st&&st.dict; if(!d) return {box:[0,0,1,1],mat:ID,kind:'image'};
+      if(String(d.get(PDFName.of('Subtype')))==='/Image') return {box:[0,0,1,1],mat:ID,kind:'image'};
+      const bb=L(d.get(PDFName.of('BBox'))), mt=L(d.get(PDFName.of('Matrix')));
+      const box=bb instanceof PDFArray?bb.asArray().map(x=>L(x).asNumber()):[0,0,1,1];
+      const mat=mt instanceof PDFArray?mt.asArray().map(x=>L(x).asNumber()):ID;
+      return {box,mat,kind:'form'};
+    }catch(e){ return {box:[0,0,1,1],mat:ID,kind:'form'}; }
+  }
+
+  /* walk the operators, tracking the CTM, and cut the stream into objects with page-space bounding boxes */
+  function segmentObjects(buf,res){
+    const ops=parseOps(buf), objs=[], fcache=new Map();
+    let ctm=ID, stack=[], pathStart=null, pathBox=null, clip=false, textStart=null, textBox=null, textDepth=0;
+    let Tm=ID,Tlm=ID,Tfs=0,Tc=0,Tw=0,Th=1,TL=0,Ts=0,font=null, qAtObj=0, cur=[0,0], sub=[0,0];
+    const ext=(b,x,y)=>{ if(!b) return [x,y,x,y]; b[0]=Math.min(b[0],x);b[1]=Math.min(b[1],y);b[2]=Math.max(b[2],x);b[3]=Math.max(b[3],y); return b; };
+    const extP=(b,x,y)=>{const p=M.ap(ctm,x,y); return ext(b,p[0],p[1]);};
+    const finishText=(i)=>{ if(textStart!==null){ if(textBox) objs.push({kind:'text',a:textStart,b:i,box:textBox,ctm:qAtObj,ctmM:ctmAtText}); textStart=null; textBox=null; } };
+    let ctmAtText=ID;
+    for(let i=0;i<ops.length;i++){
+      const o=ops[i], A=o.args, op=o.op;
+      if(op==='q'){stack.push(ctm);continue;}
+      if(op==='Q'){ctm=stack.pop()||ID;continue;}
+      if(op==='cm'&&A.length===6){ctm=M.mul(A,ctm);continue;}
+      if(PATH_OPS.has(op)){
+        if(pathStart===null){pathStart=i;pathBox=null;qAtObj=ctm;}
+        if(op==='m'){cur=[A[0],A[1]];sub=cur;pathBox=extP(pathBox,A[0],A[1]);}
+        else if(op==='l'){cur=[A[0],A[1]];pathBox=extP(pathBox,A[0],A[1]);}
+        else if(op==='c'){for(let k=0;k<6;k+=2)pathBox=extP(pathBox,A[k],A[k+1]);cur=[A[4],A[5]];}
+        else if(op==='v'){pathBox=extP(pathBox,A[0],A[1]);pathBox=extP(pathBox,A[2],A[3]);cur=[A[2],A[3]];}
+        else if(op==='y'){pathBox=extP(pathBox,A[0],A[1]);pathBox=extP(pathBox,A[2],A[3]);cur=[A[2],A[3]];}
+        else if(op==='re'){const [x,y,w,h]=A;[[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(q=>pathBox=extP(pathBox,q[0],q[1]));cur=[x,y];}
+        continue;
+      }
+      if(op==='W'||op==='W*'){clip=true;continue;}
+      if(PAINT_OPS.has(op)){
+        if(pathStart!==null&&pathBox&&op!=='n'&&!clip) objs.push({kind:'path',a:pathStart,b:i,box:pathBox,ctm:qAtObj,paint:op});
+        pathStart=null;pathBox=null;clip=false;continue;
+      }
+      if(op==='BT'){textStart=i;textBox=null;Tm=ID;Tlm=ID;qAtObj=ctm;ctmAtText=ctm;continue;}
+      if(op==='ET'){finishText(i);continue;}
+      if(op==='Tf'){font=fontInfo(res,String(A[0]),fcache);Tfs=+A[1]||0;continue;}
+      if(op==='Tc'){Tc=+A[0]||0;continue;} if(op==='Tw'){Tw=+A[0]||0;continue;} if(op==='Tz'){Th=(+A[0]||100)/100;continue;}
+      if(op==='TL'){TL=+A[0]||0;continue;} if(op==='Ts'){Ts=+A[0]||0;continue;}
+      if(op==='Td'){Tlm=M.mul([1,0,0,1,+A[0]||0,+A[1]||0],Tlm);Tm=Tlm;continue;}
+      if(op==='TD'){TL=-(+A[1]||0);Tlm=M.mul([1,0,0,1,+A[0]||0,+A[1]||0],Tlm);Tm=Tlm;continue;}
+      if(op==='Tm'&&A.length===6){Tlm=A.slice();Tm=Tlm;continue;}
+      if(op==='T*'){Tlm=M.mul([1,0,0,1,0,-TL],Tlm);Tm=Tlm;continue;}
+      if(op==='Tj'||op==="'"||op==='"'||op==='TJ'){
+        if(op==="'"||op==='"'){ if(op==='"'){Tw=+A[0]||0;Tc=+A[1]||0;} Tlm=M.mul([1,0,0,1,0,-TL],Tlm);Tm=Tlm; }
+        const items=op==='TJ'?(Array.isArray(A[0])?A[0]:[]):[A[A.length-1]];
+        if(!font) font=fontInfo(res,'__none__',fcache);
+        let x=0; const trm=M.mul(M.mul([Tfs*Th,0,0,Tfs,0,Ts],Tm),ctm);
+        for(const it of items){
+          if(typeof it==='number'){x-=it/1000;continue;}
+          if(!(it instanceof Uint8Array)) continue;
+          const nb=font.bytes;
+          for(let k=0;k+nb-1<it.length;k+=nb){
+            const code=nb===2?(it[k]<<8)|it[k+1]:it[k]; const w=font.w.has(code)?font.w.get(code):font.dw;
+            x+=w/1000+(Tfs?(Tc+(code===32&&nb===1?Tw:0))/Tfs:0);
+          }
+        }
+        if(Tfs){ [[0,font.desc],[x,font.desc],[0,font.asc],[x,font.asc]].forEach(q=>{const p=M.ap(trm,q[0],q[1]); textBox=ext(textBox,p[0],p[1]);}); }
+        Tm=M.mul([1,0,0,1,x*Tfs*Th,0],Tm);
+        continue;
+      }
+      if(op==='Do'){
+        const xb=xobjBox(res,String(A[0])); const m=M.mul(xb.mat,ctm); let b=null;
+        [[xb.box[0],xb.box[1]],[xb.box[2],xb.box[1]],[xb.box[0],xb.box[3]],[xb.box[2],xb.box[3]]].forEach(q=>{const p=M.ap(m,q[0],q[1]); b=ext(b,p[0],p[1]);});
+        objs.push({kind:xb.kind,a:i,b:i,box:b,ctm}); continue;
+      }
+      if(op==='INLINE_IMAGE'){ let b=null; [[0,0],[1,0],[0,1],[1,1]].forEach(q=>{const p=M.ap(ctm,q[0],q[1]); b=ext(b,p[0],p[1]);}); objs.push({kind:'image',a:i,b:i,box:b,ctm}); continue; }
+    }
+    /* an object whose range has unbalanced q/Q can't be wrapped safely */
+    objs.forEach((ob,idx)=>{ ob.i=idx; let d=0; for(let k=ob.a;k<=ob.b;k++){ if(ops[k].op==='q')d++; if(ops[k].op==='Q')d--; if(d<0) break; } ob.locked=d!==0; if(ob.kind==='text') ob.ctm=ob.ctmM; });
+    return {ops,objs};
+  }
+  /* rebuild the content stream with the edits applied */
+  function rebuildContent(buf,ops,objs,edits){
+    const parts=[]; let pos=0; const slice=(s,e)=>buf.subarray(s,e); const enc=new TextEncoder();
+    const f=n=>Number.isInteger(n)?String(n):n.toFixed(4).replace(/\.?0+$/,'');
+    for(const ob of objs){
+      const ed=edits[ob.i]; if(!ed||ob.locked) continue;
+      const s=ops[ob.a].s, e=ops[ob.b].e;
+      parts.push(slice(pos,s));
+      const stateBytes=[]; for(let k=ob.a;k<=ob.b;k++) if(STATE_OPS.has(ops[k].op)) stateBytes.push(slice(ops[k].s,ops[k].e),enc.encode('\n'));
+      if(!ed.del){
+        const sc=ed.s||1, T=[sc,0,0,sc,(ed.px||0)*(1-sc)+(ed.dx||0),(ed.py||0)*(1-sc)+(ed.dy||0)];
+        const Mo=M.mul(M.mul(M.inv(ob.ctm),T),ob.ctm);
+        parts.push(enc.encode('\nq '+Mo.map(f).join(' ')+' cm\n'),slice(s,e),enc.encode('\nQ\n'));
+      }
+      parts.push(...stateBytes);
+      pos=e;
+    }
+    parts.push(slice(pos,buf.length));
+    const len=parts.reduce((n,x)=>n+x.length,0), out=new Uint8Array(len); let o=0; for(const x of parts){out.set(x,o);o+=x.length;}
+    return out;
+  }
+  function pageContentBytes(doc,pg){
+    const {PDFArray,PDFRef,decodePDFRawStream}=PDFLib; const c=pg.node.Contents(); if(!c) return new Uint8Array();
+    const L=o=>o instanceof PDFRef?doc.context.lookup(o):o;
+    const streams=c instanceof PDFArray?c.asArray().map(L):[c];
+    const chunks=streams.map(st=>{ try{ return decodePDFRawStream(st).decode(); }catch(e){ return st.contents||new Uint8Array(); } });
+    const len=chunks.reduce((n,x)=>n+x.length+1,0), out=new Uint8Array(len); let o=0; for(const x of chunks){out.set(x,o);o+=x.length;out[o++]=10;}
+    return out;
+  }
+  function setPageContent(doc,pg,bytes){
+    const {PDFName}=PDFLib; const ref=doc.context.register(doc.context.flateStream(bytes)); pg.node.set(PDFName.of('Contents'),ref);
+  }
+  async function libDoc(f){ if(!f.pdf.lib) f.pdf.lib=await PDFDocument.load(f.pdf.buf.slice(0),{ignoreEncryption:true}); return f.pdf.lib; }
+  async function pageObjects(p){
+    if(p.objs) return p.objs;
+    const f=files.get(p.fileId); if(f.kind!=='pdf') return (p.objs={ops:[],objs:[],buf:new Uint8Array()});
+    const doc=await libDoc(f), pg=doc.getPage(p.index), buf=pageContentBytes(doc,pg);
+    const res=pg.node.Resources(); const r=segmentObjects(buf,res||doc.context.obj({})); r.buf=buf; p.objs=r; return r;
+  }
+  const hasObjEdits=p=>p.objEdits&&Object.keys(p.objEdits).length>0;
+  function applyObjEdits(doc,pg,p){ if(!hasObjEdits(p)||!p.objs) return; setPageContent(doc,pg,rebuildContent(p.objs.buf,p.objs.ops,p.objs.objs,p.objEdits)); }
+  /* a pdf.js page of this page with the object edits applied, for preview and thumbnails */
+  async function renderPage(p){
+    const f=files.get(p.fileId);
+    if(!hasObjEdits(p)) return f.pdf.doc.getPage(p.index+1);
+    const key=JSON.stringify(p.objEdits);
+    if(p.mod&&p.mod.key===key) return p.mod.page;
+    await pageObjects(p);
+    const src=await libDoc(f), d=await PDFDocument.create(); const [cp]=await d.copyPages(src,[p.index]); applyObjEdits(d,cp,p); d.addPage(cp);
+    const bytes=await d.save({useObjectStreams:false});
+    if(p.mod&&p.mod.doc) try{ p.mod.doc.destroy(); }catch(e){}
+    const doc=await pdfjsLib.getDocument(Object.assign({data:bytes},PDFJS_OPTS)).promise; const page=await doc.getPage(1);
+    p.mod={key,doc,page}; return page;
+  }
+  /* current bounding box of an object with its edit applied, in page space */
+  function objBoxNow(ob,ed){
+    if(!ed) return ob.box; const sc=ed.s||1, px=ed.px||0, py=ed.py||0, dx=ed.dx||0, dy=ed.dy||0;
+    const t=(x,y)=>[px+(x-px)*sc+dx,py+(y-py)*sc+dy]; const a=t(ob.box[0],ob.box[1]), b=t(ob.box[2],ob.box[3]);
+    return [Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];
+  }
+  const OBJ_NAMES={path:'קו / צורה',text:'טקסט',image:'תמונה',form:'אובייקט מוטמע (טופס)'};
+
   /* ==================== viewer + editor ====================
      Annotations live in PDF user space (points, y-up) so they survive zoom and rotation.
      Box annotations (text, image, cover) remember the display rotation R they were made in;
@@ -571,7 +801,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   const octx=vOverlay.getContext('2d');
   const measureCtx=document.createElement('canvas').getContext('2d');
   const A4=[595.28,841.89], IMG_MARGIN=24, LH=1.25, BASE=0.92;
-  let vToken=0, zoom=1, geom=null, tool='select', sel=null, placing=null, drag=null, editing=null, dirtyRedraw=false;
+  let vToken=0, zoom=1, geom=null, tool='select', sel=null, placing=null, drag=null, editing=null, dirtyRedraw=false, osel=null, ohover=null;
   const hasHeb=s=>/[֐-׿]/.test(s);
   const firstStrongRtl=s=>{const m=s.match(/[A-Za-z֐-׿]/); return !!(m&&/[֐-׿]/.test(m[0]));};
   const hexToRgb=h=>{const n=parseInt(h.slice(1),16); return [((n>>16)&255)/255,((n>>8)&255)/255,(n&255)/255];};
@@ -586,7 +816,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   async function pageGeom(p){
     const f=files.get(p.fileId);
     if(f.kind==='pdf'){
-      const pg=await f.pdf.doc.getPage(p.index+1);
+      const pg=await renderPage(p);
       return {pdf:true,pg,view:pg.view.slice(),R:norm((pg.rotate||0)+p.rot)};
     }
     const fi=f.imgs[p.index], L=imageLayout(fi);
@@ -607,7 +837,8 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
       toPdf:(X,Y)=>{const x=X-t[4],y=Y-t[5]; return [(t[3]*x-t[2]*y)/det,(-t[1]*x+t[0]*y)/det];}};
   }
   const annotsOf=p=>(p.annots||(p.annots=[]));
-  function pushHist(p){ (p.hist||(p.hist=[])).push(JSON.stringify(annotsOf(p))); if(p.hist.length>40) p.hist.shift(); }
+  function pushHist(p){ (p.hist||(p.hist=[])).push(JSON.stringify({a:annotsOf(p),o:p.objEdits||{}})); if(p.hist.length>40) p.hist.shift(); }
+  function refreshThumb(p){ p.thumb=null; updateCard(p); queueThumb(p); }
 
   /* ---- text layout shared by screen and export ---- */
   function wrapText(text,maxW,measure){
@@ -630,16 +861,18 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   /* ---- open / close ---- */
   function openViewer(i){ viewIdx=i; viewer.hidden=false; document.body.style.overflow='hidden'; zoom=1; sel=null; placing=null; setTool('select'); drawViewer(); }
   function closeViewer(){ commitEdit(); viewer.hidden=true; document.body.style.overflow=''; viewIdx=-1; renderGrid(); }
-  function setTool(t){ tool=t; placing=null; if(t!=='select') sel=null; commitEdit();
+  function setTool(t){ tool=t; placing=null; if(t!=='select') sel=null; if(t!=='obj'){ osel=null; ohover=null; } commitEdit();
     viewer.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
     vOverlay.className=cursorFor();
     const H={select:'לחיצה על פריט בוחרת אותו. גוררים כדי להזיז, הפינה כדי לשנות גודל. לחיצה כפולה על טקסט פותחת לעריכה.',
       pen:'מציירים עם העכבר או האצבע.',text:'לוחצים במקום שבו הטקסט יתחיל.',sig:'',
       edit:'מסמנים מלבן סביב הטקסט שרוצים לשנות. הטקסט המקורי מוסתר ונפתח לעריכה.',
-      cover:'מסמנים מלבן. האזור מכוסה בצבע הרקע של העמוד.'};
-    vHint.textContent=H[t]||''; $('delSel').disabled=!sel; drawOverlay();
+      cover:'מסמנים מלבן. האזור מכוסה בצבע הרקע של העמוד.',
+      obj:'מעבירים את העכבר על קו, ריבוע, טקסט או תמונה שכבר בדף. לחיצה בוחרת, גרירה מזיזה, הפינות משנות גודל, Delete מוחק.'};
+    vHint.textContent=H[t]||''; $('delSel').disabled=!sel&&osel===null; drawOverlay();
+    if(t==='obj'&&viewIdx>=0) pageObjects(pages[viewIdx]).then(r=>{ if(!r.objs.length) vHint.textContent='בעמוד הזה אין אובייקטים שאפשר לערוך (סריקה או תמונה).'; });
   }
-  function cursorFor(){ return placing?'c-place':(({pen:'c-pen',text:'c-text',edit:'c-box',cover:'c-box'})[tool]||''); }
+  function cursorFor(){ return placing?'c-place':(({pen:'c-pen',text:'c-text',edit:'c-box',cover:'c-box',obj:(ohover!==null?'c-move':'')})[tool]||''); }
   viewer.querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{ if(b.dataset.tool==='sig') openSig(); else setTool(b.dataset.tool); }));
 
   /* ---- rendering ---- */
@@ -649,6 +882,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     const p=pages[viewIdx], f=files.get(p.fileId), tok=++vToken;
     $('vTitle').textContent='עמוד '+(viewIdx+1)+' מתוך '+pages.length+' · '+pageLabel(f,p);
     $('vPrev').disabled=viewIdx===0; $('vNext').disabled=viewIdx===pages.length-1;
+    if(f.kind==='pdf'&&!p.objs) await pageObjects(p);
     geom=await pageGeom(p); if(tok!==vToken) return;
     const vp1=makeVP(geom.view,1,geom.R);
     const fit=Math.min((vStage.clientWidth-34)/vp1.width,(vStage.clientHeight-30)/vp1.height);
@@ -682,6 +916,13 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     octx.setTransform(1,0,0,1,0,0); octx.clearRect(0,0,vOverlay.width,vOverlay.height);
     for(const a of annotsOf(p)) drawAnnot(a,vp,s,geom.R);
     if(drag&&drag.preview) drawAnnot(drag.preview,vp,s,geom.R);
+    if(tool==='obj'&&pages[viewIdx].objs){
+      const P=pages[viewIdx], objs=P.objs.objs;
+      const poly=(b,style)=>{ const c=[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]].map(q=>vp.toCanvas(q[0],q[1])); octx.setTransform(1,0,0,1,0,0); octx.beginPath(); c.forEach((q,i)=>i?octx.lineTo(q[0],q[1]):octx.moveTo(q[0],q[1])); octx.closePath(); style(c); };
+      if(ohover!==null&&ohover!==osel){ const ob=objs[ohover]; poly(objBoxNow(ob,(P.objEdits||{})[ohover]),()=>{ octx.strokeStyle='rgba(65,82,212,.7)'; octx.lineWidth=1.5; octx.setLineDash([3,3]); octx.stroke(); octx.setLineDash([]); }); }
+      if(osel!==null){ const ob=objs[osel]; const ed=drag&&drag.kind&&drag.kind[0]==='o'?drag.ed:(P.objEdits||{})[osel];
+        if(!(ed&&ed.del)) poly(objBoxNow(ob,ed),c=>{ octx.strokeStyle='#4152d4'; octx.lineWidth=2; octx.setLineDash([6,4]); octx.stroke(); octx.setLineDash([]); octx.fillStyle='#4152d4'; if(!ob.locked) c.forEach(q=>octx.fillRect(q[0]-5,q[1]-5,10,10)); }); }
+    }
     if(sel&&!editing){
       const a=sel;
       octx.setTransform(1,0,0,1,0,0); octx.strokeStyle='#4152d4'; octx.lineWidth=1.5; octx.setLineDash([6,4]);
@@ -725,6 +966,12 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     }
     return null;
   }
+  function objHit(Q,tol){
+    const P=pages[viewIdx], objs=P.objs.objs, ed=P.objEdits||{}; let best=null, bestA=Infinity;
+    objs.forEach((ob,i)=>{ if(ed[i]&&ed[i].del) return; const b=objBoxNow(ob,ed[i]); const pad=Math.max(tol,3);
+      if(Q[0]>=b[0]-pad&&Q[0]<=b[2]+pad&&Q[1]>=b[1]-pad&&Q[1]<=b[3]+pad){ const a=(b[2]-b[0]+2*pad)*(b[3]-b[1]+2*pad); if(a<bestA){bestA=a;best=i;} } });
+    return best;
+  }
   vOverlay.addEventListener('pointerdown',e=>{
     if(!geom||e.button>0) return; e.preventDefault(); vOverlay.setPointerCapture(e.pointerId);
     const Q=evPdf(e), C=evPt(e), p=pages[viewIdx], tolPt=10/geom.scale;
@@ -733,16 +980,30 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     if(tool==='pen'){ drag={kind:'pen',preview:{type:'ink',pts:[Q],color:$('penColor').value,width:parseFloat($('penSize').value)}}; drawOverlay(); return; }
     if(tool==='text'){ addText(Q); return; }
     if(tool==='edit'||tool==='cover'){ drag={kind:'box',start:C,cur:C}; return; }
+    if(tool==='obj'){
+      const P=pages[viewIdx]; if(!P.objs) return; const hit=objHit(Q,tolPt);
+      if(hit===null){ osel=null; $('delSel').disabled=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay(); return; }
+      osel=hit; $('delSel').disabled=false; const ob=P.objs.objs[hit], ed0=Object.assign({dx:0,dy:0,s:1,px:0,py:0},(P.objEdits||{})[hit]||{});
+      if(ob.locked){ vHint.textContent='האובייקט הזה כולל מצבים גרפיים מקוננים ואי אפשר להזיז אותו בבטחה. אפשר לכסות אותו בכלי "מחיקה".'; drag=null; drawOverlay(); return; }
+      const b=objBoxNow(ob,ed0); const corners=[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]];
+      let ci=-1; corners.forEach((c,k)=>{ if(Math.hypot(c[0]-Q[0],c[1]-Q[1])<tolPt) ci=k; });
+      if(ci>=0){ const piv=corners[(ci+2)%4]; drag={kind:'oresize',i:hit,orig:ed0,ed:Object.assign({},ed0),piv,corner:corners[ci]}; vOverlay.className='c-resize'; }
+      else drag={kind:'omove',i:hit,orig:ed0,ed:Object.assign({},ed0),start:Q};
+      vHint.textContent=OBJ_NAMES[ob.kind]||''; drawOverlay(); return;
+    }
     const h=hitTest(Q,tolPt);
     if(h){ const wasSel=sel===h.a; sel=h.a; $('delSel').disabled=false; drag={kind:h.part==='resize'?'resize':'move',a:h.a,start:Q,orig:JSON.parse(JSON.stringify(h.a)),wasSel}; vOverlay.className=h.part==='resize'?'c-resize':'c-move'; drawOverlay(); return; }
     sel=null; $('delSel').disabled=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay();
   });
   vOverlay.addEventListener('pointermove',e=>{
-    if(!drag) return;
+    if(!drag){ if(tool==='obj'&&geom&&pages[viewIdx].objs){ const h=objHit(evPdf(e),10/geom.scale); if(h!==ohover){ ohover=h; vOverlay.className=cursorFor(); if(h!==null) vHint.textContent=OBJ_NAMES[pages[viewIdx].objs.objs[h].kind]||''; drawOverlay(); } } return; }
     if(drag.kind==='pan'){ vStage.scrollLeft=drag.sl-(e.clientX-drag.x); vStage.scrollTop=drag.st-(e.clientY-drag.y); return; }
     const Q=evPdf(e);
     if(drag.kind==='pen'){ const pts=drag.preview.pts, l=pts[pts.length-1]; if(Math.hypot(Q[0]-l[0],Q[1]-l[1])>0.7/geom.scale) pts.push(Q); }
     else if(drag.kind==='box'){ drag.cur=evPt(e); drawOverlay(); const s=drag.start,c=drag.cur; octx.setTransform(1,0,0,1,0,0); octx.strokeStyle='#4152d4'; octx.setLineDash([5,4]); octx.lineWidth=1.5; octx.strokeRect(Math.min(s[0],c[0]),Math.min(s[1],c[1]),Math.abs(c[0]-s[0]),Math.abs(c[1]-s[1])); octx.setLineDash([]); return; }
+    else if(drag.kind==='omove'){ drag.ed=Object.assign({},drag.orig,{dx:drag.orig.dx+Q[0]-drag.start[0],dy:drag.orig.dy+Q[1]-drag.start[1]}); }
+    else if(drag.kind==='oresize'){ const o=drag.orig, P=drag.piv, C=drag.corner; const vx=C[0]-P[0], vy=C[1]-P[1], L2=vx*vx+vy*vy||1; const k=Math.max(0.05,((Q[0]-P[0])*vx+(Q[1]-P[1])*vy)/L2);
+      const s2=o.s*k; drag.ed={px:o.px,py:o.py,s:s2,dx:P[0]*(1-k)+k*o.px*(1-o.s)+k*o.dx-o.px*(1-s2),dy:P[1]*(1-k)+k*o.py*(1-o.s)+k*o.dy-o.py*(1-s2)}; }
     else if(drag.kind==='move'){ const dx=Q[0]-drag.start[0], dy=Q[1]-drag.start[1], a=drag.a, o=drag.orig; if(a.type==='ink') a.pts=o.pts.map(q=>[q[0]+dx,q[1]+dy]); else {a.ax=o.ax+dx; a.ay=o.ay+dy;} }
     else if(drag.kind==='resize'){ const a=drag.a, [u,v]=localUV(a,Q); if(a.type==='image'){ a.w=Math.max(20,u); a.h=a.w*drag.orig.h/drag.orig.w; } else if(a.type==='text'){ a.w=Math.max(30,u); fitTextHeight(a); } else { a.w=Math.max(4,u); a.h=Math.max(4,v); } }
     if(!dirtyRedraw){ dirtyRedraw=true; requestAnimationFrame(()=>{dirtyRedraw=false; drawOverlay();}); }
@@ -751,6 +1012,10 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     if(!drag) return; const d=drag; drag=null; const p=pages[viewIdx];
     if(d.kind==='pen'){ pushHist(p); annotsOf(p).push(d.preview); updateCard(p); }
     else if(d.kind==='box'){ const s=d.start,c=d.cur; if(Math.abs(c[0]-s[0])>4&&Math.abs(c[1]-s[1])>4) await boxCreated(s,c); }
+    else if(d.kind==='omove'||d.kind==='oresize'){
+      const changed=JSON.stringify(d.ed)!==JSON.stringify(d.orig);
+      if(changed){ pushHist(p); (p.objEdits||(p.objEdits={}))[d.i]=d.ed; refreshThumb(p); vOverlay.className=cursorFor(); await drawViewer(); return; }
+    }
     else if(d.kind==='move'||d.kind==='resize'){ const now=JSON.stringify(d.a); if(now!==JSON.stringify(d.orig)){ const list=annotsOf(p); const i=list.indexOf(d.a); list[i]=d.orig; pushHist(p); list[i]=d.a; } }
     vOverlay.className=cursorFor();
     if(d.kind==='move'||d.kind==='resize'){ sel=d.a; $('delSel').disabled=false; if(d.kind==='move'&&d.wasSel&&d.a.type==='text'&&JSON.stringify(d.a)===JSON.stringify(d.orig)) openEdit(d.a); }
@@ -844,9 +1109,9 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   }
   $('fontSize').addEventListener('change',applyStyle); $('penColor').addEventListener('input',applyStyle);
   $('boldBtn').addEventListener('click',()=>{ const b=$('boldBtn'); b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true')); b.classList.toggle('on',b.getAttribute('aria-pressed')==='true'); applyStyle(); });
-  $('delSel').addEventListener('click',()=>{ if(!sel) return; const p=pages[viewIdx]; pushHist(p); const l=annotsOf(p); l.splice(l.indexOf(sel),1); sel=null; $('delSel').disabled=true; updateCard(p); drawOverlay(); });
+  $('delSel').addEventListener('click',()=>{ const p=pages[viewIdx]; if(osel!==null){ pushHist(p); (p.objEdits||(p.objEdits={}))[osel]={del:true}; osel=null; $('delSel').disabled=true; refreshThumb(p); drawViewer(); return; } if(!sel) return; pushHist(p); const l=annotsOf(p); l.splice(l.indexOf(sel),1); sel=null; $('delSel').disabled=true; updateCard(p); drawOverlay(); });
   $('undoBtn').addEventListener('click',undo);
-  function undo(){ commitEdit(); const p=pages[viewIdx]; if(!p||!p.hist||!p.hist.length) return; p.annots=JSON.parse(p.hist.pop()); sel=null; $('delSel').disabled=true; updateCard(p); drawOverlay(); }
+  function undo(){ commitEdit(); const p=pages[viewIdx]; if(!p||!p.hist||!p.hist.length) return; const h=JSON.parse(p.hist.pop()); const objChanged=JSON.stringify(h.o)!==JSON.stringify(p.objEdits||{}); p.annots=h.a; p.objEdits=h.o; sel=null; osel=null; $('delSel').disabled=true; if(objChanged){ refreshThumb(p); drawViewer(); } else { updateCard(p); drawOverlay(); } }
 
   /* ---- zoom ---- */
   $('zoomIn').onclick=()=>{ zoom=Math.min(5,zoom*1.25); drawViewer(); };
@@ -916,8 +1181,8 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   $('vDel').onclick=()=>{ commitEdit(); pages.splice(viewIdx,1); renderGrid(); if(!pages.length) closeViewer(); else { sel=null; drawViewer(); } };
   document.addEventListener('keydown',e=>{
     if(viewer.hidden) return; if(e.target&&(e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'||e.target.tagName==='SELECT')) return;
-    if(e.key==='Escape'){ if(!$('sigModal').hidden){ $('sigModal').hidden=true; } else if(placing){ placing=null; setTool('select'); } else if(sel){ sel=null; $('delSel').disabled=true; drawOverlay(); } else closeViewer(); }
-    else if((e.key==='Delete'||e.key==='Backspace')&&sel){ e.preventDefault(); $('delSel').click(); }
+    if(e.key==='Escape'){ if(!$('sigModal').hidden){ $('sigModal').hidden=true; } else if(placing){ placing=null; setTool('select'); } else if(sel||osel!==null){ sel=null; osel=null; $('delSel').disabled=true; drawOverlay(); } else closeViewer(); }
+    else if((e.key==='Delete'||e.key==='Backspace')&&(sel||osel!==null)){ e.preventDefault(); $('delSel').click(); }
     else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){ e.preventDefault(); undo(); }
     else if(e.key==='ArrowLeft'&&!sel) $('vNext').click();
     else if(e.key==='ArrowRight'&&!sel) $('vPrev').click();
@@ -937,7 +1202,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     }
     return line.replace(/[֐-׿][֐-׿\s"'\-]*[֐-׿]|[֐-׿]/g,s=>rev(s));
   }
-  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages};
+  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages,segmentObjects,parseOps};
   let fontCache=null;
   async function exportFonts(doc){
     if(fontCache&&fontCache.doc===doc) return fontCache;
@@ -1113,6 +1378,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
         const f=files.get(p.fileId);
         if(f.kind==='pdf'){
           const pg=copied.get(f.id+':'+p.index);
+          if(hasObjEdits(p)){ await pageObjects(p); applyObjEdits(out,pg,p); }
           pg.setRotation(degrees(norm((pg.getRotation().angle||0)+p.rot)));
           out.addPage(pg);
           await drawAnnots(out,pg,p);

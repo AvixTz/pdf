@@ -799,12 +799,28 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     push(buf.subarray(pos));
     /* moved objects are redrawn at the end of the stream, i.e. above everything else */
     const opBytes=j=>{ const o=ops[j]; if(skip.has(j)) return (o.op==="'"||o.op==='"')?' T* ':''; if(repl.has(j)) return '\n'+repl.get(j)+'\n'; return buf.subarray(o.s,o.e); };
-    for(const {ob,T} of onTop){
+    const emitCopy=(ob,T)=>{
       const Mc=M.mul(M.mul(T,ob.ctm),M.inv(ctmEnd||ID));
       push('\nq '+Mc.map(f).join(' ')+' cm\n');
       for(const j of (ob.state||[])){ if(j<ob.a||j>ob.b){ push(buf.subarray(ops[j].s,ops[j].e)); push('\n'); } }
       for(let j=ob.a;j<=ob.b;j++){ push(opBytes(j)); push('\n'); }
       push('Q\n');
+    };
+    const boxT=(b,T)=>{ const c=[[b[0],b[1]],[b[2],b[3]]].map(q=>[T[0]*q[0]+T[4],T[3]*q[1]+T[5]]); return [Math.min(c[0][0],c[1][0]),Math.min(c[0][1],c[1][1]),Math.max(c[0][0],c[1][0]),Math.max(c[0][1],c[1][1])]; };
+    const edT=ed=>{ const sc=(ed&&ed.s)||1; return [sc,0,0,sc,((ed&&ed.px)||0)*(1-sc)+((ed&&ed.dx)||0),((ed&&ed.py)||0)*(1-sc)+((ed&&ed.dy)||0)]; };
+    const topSet=new Set(onTop.map(x=>x.ob.i));
+    for(const {ob,T} of onTop){
+      emitCopy(ob,T);
+      /* a filled shape brought on top would hide the text and lines already at its destination: draw those again above it */
+      if(ob.fill){
+        const nb=boxT(ob.box,T);
+        for(const o2 of objs){
+          if(o2===ob||topSet.has(o2.i)||o2.fill||o2.background||o2.blank||o2.locked||o2.kind==='form') continue;
+          const e2=edits[o2.i]; if(e2&&e2.del) continue;
+          const b2=boxT(o2.box,edT(e2));
+          if(b2[0]<nb[2]&&b2[2]>nb[0]&&b2[1]<nb[3]&&b2[3]>nb[1]) emitCopy(o2,edT(e2));
+        }
+      }
     }
     const len=parts.reduce((n,x)=>n+x.length,0), out=new Uint8Array(len); let o=0; for(const x of parts){out.set(x,o);o+=x.length;}
     return out;
@@ -825,7 +841,10 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     if(p.objs) return p.objs;
     const f=files.get(p.fileId); if(f.kind!=='pdf') return (p.objs={ops:[],objs:[],buf:new Uint8Array()});
     const doc=await libDoc(f), pg=doc.getPage(p.index), buf=pageContentBytes(doc,pg);
-    const res=pg.node.Resources(); const r=segmentObjects(buf,res||doc.context.obj({})); r.buf=buf; p.objs=r; return r;
+    const res=pg.node.Resources(); const r=segmentObjects(buf,res||doc.context.obj({})); r.buf=buf;
+    const {width,height}=pg.getSize(), pageA=width*height;
+    r.objs.forEach(ob=>{ const a=(ob.box[2]-ob.box[0])*(ob.box[3]-ob.box[1]); ob.background=a>=pageA*0.6; ob.fill=ob.kind==='path'&&/[fFBb]/.test(ob.paint||''); });
+    p.objs=r; return r;
   }
   const hasObjEdits=p=>(p.objEdits&&Object.keys(p.objEdits).length>0)||(p.textEdits&&p.textEdits.length>0);
   function applyObjEdits(doc,pg,p){ if(!hasObjEdits(p)||!p.objs) return; setPageContent(doc,pg,rebuildContent(p.objs.buf,p.objs.ops,p.objs.objs,p.objEdits||{},p.textEdits||[],p.objs.ctmEnd)); }
@@ -849,7 +868,8 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     return [Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];
   }
   const OBJ_NAMES={path:'קו / צורה',text:'טקסט',image:'תמונה',form:'אובייקט מוטמע (טופס)'};
-  const objLabel=ob=>{ if(ob.kind==='text'&&ob.text){ const s=ob.text.replace(/\s+/g,' ').trim(); const l=hasHeb(s)?bidiVisual(s):s; return 'טקסט: "'+(l.length>40?l.slice(0,40)+'…':l)+'"'; } return OBJ_NAMES[ob.kind]||''; };
+  const kindLabel=ob=>ob.kind==='path'?(ob.fill?'צורה ממולאת':'קו'):OBJ_NAMES[ob.kind]||'';
+  const objLabel=ob=>{ if(ob.kind==='text'&&ob.text){ const s=ob.text.replace(/\s+/g,' ').trim(); const l=hasHeb(s)?bidiVisual(s):s; return 'טקסט: "'+(l.length>40?l.slice(0,40)+'…':l)+'"'; } return kindLabel(ob); };
 
   /* ---- in-place text replacement: the new text is written with the document's own fonts ---- */
   function runsInBox(p,X1,Y1,X2,Y2){
@@ -1091,10 +1111,10 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
        blank text blocks and page-sized objects come last */
     const P=pages[viewIdx], objs=P.objs.objs, ed=P.objEdits||{}; let best=null, bestS=Infinity;
     const pageA=(geom.view[2]-geom.view[0])*(geom.view[3]-geom.view[1]);
-    objs.forEach((ob,i)=>{ if((ed[i]&&ed[i].del)||ob.blank) return; const b=objBoxNow(ob,ed[i]); const pad=Math.max(tol,3);
+    objs.forEach((ob,i)=>{ if((ed[i]&&ed[i].del)||ob.blank||ob.background) return; const b=objBoxNow(ob,ed[i]); const pad=Math.max(tol,3);
       const near=Q[0]>=b[0]-pad&&Q[0]<=b[2]+pad&&Q[1]>=b[1]-pad&&Q[1]<=b[3]+pad; if(!near) return;
       const inside=Q[0]>=b[0]&&Q[0]<=b[2]&&Q[1]>=b[1]&&Q[1]<=b[3]; const a=(b[2]-b[0]+2*pad)*(b[3]-b[1]+2*pad);
-      const s=a+(inside?0:1e7)+(a>pageA*0.6?1e9:0); if(s<bestS){bestS=s;best=i;} });
+      const s=a+(inside?0:1e7); if(s<bestS){bestS=s;best=i;} });
     return best;
   }
   vOverlay.addEventListener('pointerdown',e=>{
@@ -1107,7 +1127,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     if(tool==='edit'||tool==='cover'){ drag={kind:'box',start:C,cur:C}; return; }
     if(tool==='obj'){
       const P=pages[viewIdx]; if(!P.objs) return; const hit=objHit(Q,tolPt);
-      if(hit===null){ osel=null; $('delSel').disabled=true; $('layerBtn').hidden=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay(); return; }
+      if(hit===null){ osel=null; $('delSel').disabled=true; $('layerBtn').hidden=true; vHint.textContent='כאן אין אובייקט שאפשר להזיז (רקע העמוד).'; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay(); return; }
       const wasSel=osel===hit; osel=hit; $('delSel').disabled=false; syncLayerBtn(); const ob=P.objs.objs[hit], ed0=Object.assign({dx:0,dy:0,s:1,px:0,py:0},(P.objEdits||{})[hit]||{});
       if(ob.locked){ vHint.textContent='האובייקט הזה כולל מצבים גרפיים מקוננים ואי אפשר להזיז אותו בבטחה. אפשר לכסות אותו בכלי "מחיקה".'; drag=null; drawOverlay(); return; }
       const b=objBoxNow(ob,ed0); const corners=[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]];
@@ -1129,7 +1149,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     else if(drag.kind==='box'){ drag.cur=evPt(e); drawOverlay(); const s=drag.start,c=drag.cur; octx.setTransform(1,0,0,1,0,0); octx.strokeStyle='#4152d4'; octx.setLineDash([5,4]); octx.lineWidth=1.5; octx.strokeRect(Math.min(s[0],c[0]),Math.min(s[1],c[1]),Math.abs(c[0]-s[0]),Math.abs(c[1]-s[1])); octx.setLineDash([]); return; }
     else if(drag.kind==='omove'){ drag.ed=Object.assign({},drag.orig,{dx:drag.orig.dx+Q[0]-drag.start[0],dy:drag.orig.dy+Q[1]-drag.start[1]}); }
     else if(drag.kind==='oresize'){ const o=drag.orig, P=drag.piv, C=drag.corner; const vx=C[0]-P[0], vy=C[1]-P[1], L2=vx*vx+vy*vy||1; const k=Math.max(0.25,((Q[0]-P[0])*vx+(Q[1]-P[1])*vy)/L2);
-      const s2=o.s*k; drag.ed={px:o.px,py:o.py,s:s2,dx:P[0]*(1-k)+k*o.px*(1-o.s)+k*o.dx-o.px*(1-s2),dy:P[1]*(1-k)+k*o.py*(1-o.s)+k*o.dy-o.py*(1-s2)}; }
+      const s2=o.s*k; drag.ed=Object.assign({},o,{px:o.px,py:o.py,s:s2,dx:P[0]*(1-k)+k*o.px*(1-o.s)+k*o.dx-o.px*(1-s2),dy:P[1]*(1-k)+k*o.py*(1-o.s)+k*o.dy-o.py*(1-s2)}); }
     else if(drag.kind==='move'){ const dx=Q[0]-drag.start[0], dy=Q[1]-drag.start[1], a=drag.a, o=drag.orig; if(a.type==='ink') a.pts=o.pts.map(q=>[q[0]+dx,q[1]+dy]); else {a.ax=o.ax+dx; a.ay=o.ay+dy;} }
     else if(drag.kind==='resize'){ const a=drag.a, [u,v]=localUV(a,Q); if(a.type==='image'){ a.w=Math.max(20,u); a.h=a.w*drag.orig.h/drag.orig.w; } else if(a.type==='text'){ a.w=Math.max(30,u); fitTextHeight(a); } else { a.w=Math.max(4,u); a.h=Math.max(4,v); } }
     if(!dirtyRedraw){ dirtyRedraw=true; requestAnimationFrame(()=>{dirtyRedraw=false; drawOverlay();}); }
@@ -1355,7 +1375,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     }
     return line.replace(/[֐-׿][֐-׿\s"'\-]*[֐-׿]|[֐-׿]/g,s=>rev(s));
   }
-  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages,segmentObjects,parseOps,runsInBox,buildTextEdits};
+  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages,segmentObjects,parseOps,runsInBox,buildTextEdits,rebuildContent,renderPage};
   let fontCache=null;
   async function exportFonts(doc){
     if(fontCache&&fontCache.doc===doc) return fontCache;

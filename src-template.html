@@ -764,6 +764,8 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
       if(op==='INLINE_IMAGE'){ let b=null; [[0,0],[1,0],[0,1],[1,1]].forEach(q=>{const p=M.ap(ctm,q[0],q[1]); b=ext(b,p[0],p[1]);}); objs.push({kind:'image',a:i,b:i,box:b,ctm,state:snap()}); continue; }
     }
     /* an object whose range has unbalanced q/Q can't be wrapped safely */
+    const textOf={}; runs.forEach(r=>{ textOf[r.obj]=(textOf[r.obj]||'')+r.text; });
+    objs.forEach((ob,idx)=>{ if(ob.kind==='text'){ ob.text=(textOf[idx]||'').replace(/\uFFFD/g,''); ob.blank=!ob.text.trim(); } });
     objs.forEach((ob,idx)=>{ ob.i=idx; let d=0; for(let k=ob.a;k<=ob.b;k++){ if(ops[k].op==='q')d++; if(ops[k].op==='Q')d--; if(d<0) break; } ob.locked=d!==0; if(ob.kind==='text') ob.ctm=ob.ctmM; });
     const names=[]; try{ const fonts=res.lookup(PDFLib.PDFName.of('Font')); const fd=fonts instanceof PDFLib.PDFRef?res.context.lookup(fonts):fonts; if(fd&&fd.keys) fd.keys().forEach(k=>names.push(k.asString().slice(1))); }catch(e){}
     const fontOf=n=>fontInfo(res,n,fcache);
@@ -847,6 +849,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     return [Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])];
   }
   const OBJ_NAMES={path:'קו / צורה',text:'טקסט',image:'תמונה',form:'אובייקט מוטמע (טופס)'};
+  const objLabel=ob=>{ if(ob.kind==='text'&&ob.text){ const s=ob.text.replace(/\s+/g,' ').trim(); const l=hasHeb(s)?bidiVisual(s):s; return 'טקסט: "'+(l.length>40?l.slice(0,40)+'…':l)+'"'; } return OBJ_NAMES[ob.kind]||''; };
 
   /* ---- in-place text replacement: the new text is written with the document's own fonts ---- */
   function runsInBox(p,X1,Y1,X2,Y2){
@@ -1078,15 +1081,20 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
       const a=list[i];
       if(a.type==='ink'){ if(a.pts.some(q=>Math.hypot(q[0]-Q[0],q[1]-Q[1])<tolPt+a.width)) return {a,part:'body'}; continue; }
       const [u,v]=localUV(a,Q);
-      if(Math.abs(u-a.w)<tolPt&&Math.abs(v-a.h)<tolPt) return {a,part:'resize'};
+      if(a===sel&&Math.abs(u-a.w)<tolPt&&Math.abs(v-a.h)<tolPt) return {a,part:'resize'};
       if(u>=-tolPt&&u<=a.w+tolPt&&v>=-tolPt&&v<=a.h+tolPt) return {a,part:'body'};
     }
     return null;
   }
   function objHit(Q,tol){
-    const P=pages[viewIdx], objs=P.objs.objs, ed=P.objEdits||{}; let best=null, bestA=Infinity;
-    objs.forEach((ob,i)=>{ if(ed[i]&&ed[i].del) return; const b=objBoxNow(ob,ed[i]); const pad=Math.max(tol,3);
-      if(Q[0]>=b[0]-pad&&Q[0]<=b[2]+pad&&Q[1]>=b[1]-pad&&Q[1]<=b[3]+pad){ const a=(b[2]-b[0]+2*pad)*(b[3]-b[1]+2*pad); if(a<bestA){bestA=a;best=i;} } });
+    /* an object the point is truly inside beats one caught only by the tolerance margin (thin table rules next to words);
+       blank text blocks and page-sized objects come last */
+    const P=pages[viewIdx], objs=P.objs.objs, ed=P.objEdits||{}; let best=null, bestS=Infinity;
+    const pageA=(geom.view[2]-geom.view[0])*(geom.view[3]-geom.view[1]);
+    objs.forEach((ob,i)=>{ if((ed[i]&&ed[i].del)||ob.blank) return; const b=objBoxNow(ob,ed[i]); const pad=Math.max(tol,3);
+      const near=Q[0]>=b[0]-pad&&Q[0]<=b[2]+pad&&Q[1]>=b[1]-pad&&Q[1]<=b[3]+pad; if(!near) return;
+      const inside=Q[0]>=b[0]&&Q[0]<=b[2]&&Q[1]>=b[1]&&Q[1]<=b[3]; const a=(b[2]-b[0]+2*pad)*(b[3]-b[1]+2*pad);
+      const s=a+(inside?0:1e7)+(a>pageA*0.6?1e9:0); if(s<bestS){bestS=s;best=i;} });
     return best;
   }
   vOverlay.addEventListener('pointerdown',e=>{
@@ -1100,26 +1108,27 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     if(tool==='obj'){
       const P=pages[viewIdx]; if(!P.objs) return; const hit=objHit(Q,tolPt);
       if(hit===null){ osel=null; $('delSel').disabled=true; $('layerBtn').hidden=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay(); return; }
-      osel=hit; $('delSel').disabled=false; syncLayerBtn(); const ob=P.objs.objs[hit], ed0=Object.assign({dx:0,dy:0,s:1,px:0,py:0},(P.objEdits||{})[hit]||{});
+      const wasSel=osel===hit; osel=hit; $('delSel').disabled=false; syncLayerBtn(); const ob=P.objs.objs[hit], ed0=Object.assign({dx:0,dy:0,s:1,px:0,py:0},(P.objEdits||{})[hit]||{});
       if(ob.locked){ vHint.textContent='האובייקט הזה כולל מצבים גרפיים מקוננים ואי אפשר להזיז אותו בבטחה. אפשר לכסות אותו בכלי "מחיקה".'; drag=null; drawOverlay(); return; }
       const b=objBoxNow(ob,ed0); const corners=[[b[0],b[1]],[b[2],b[1]],[b[2],b[3]],[b[0],b[3]]];
-      let ci=-1; corners.forEach((c,k)=>{ if(Math.hypot(c[0]-Q[0],c[1]-Q[1])<tolPt) ci=k; });
+      /* corner handles work only on an already-selected object, within 7 screen pixels, so a click on a small word moves it instead of shrinking it */
+      let ci=-1; if(wasSel){ const hr=7/geom.scale; corners.forEach((c,k)=>{ if(Math.hypot(c[0]-Q[0],c[1]-Q[1])<hr) ci=k; }); }
       if(ci>=0){ const piv=corners[(ci+2)%4]; drag={kind:'oresize',i:hit,orig:ed0,ed:Object.assign({},ed0),piv,corner:corners[ci]}; vOverlay.className='c-resize'; }
       else drag={kind:'omove',i:hit,orig:ed0,ed:Object.assign({},ed0),start:Q};
-      vHint.textContent=OBJ_NAMES[ob.kind]||''; drawOverlay(); return;
+      vHint.textContent=objLabel(ob); drawOverlay(); return;
     }
     const h=hitTest(Q,tolPt);
     if(h){ const wasSel=sel===h.a; sel=h.a; $('delSel').disabled=false; drag={kind:h.part==='resize'?'resize':'move',a:h.a,start:Q,orig:JSON.parse(JSON.stringify(h.a)),wasSel}; vOverlay.className=h.part==='resize'?'c-resize':'c-move'; drawOverlay(); return; }
     sel=null; $('delSel').disabled=true; drag={kind:'pan',x:e.clientX,y:e.clientY,sl:vStage.scrollLeft,st:vStage.scrollTop}; vOverlay.className='c-grab'; drawOverlay();
   });
   vOverlay.addEventListener('pointermove',e=>{
-    if(!drag){ if(tool==='obj'&&geom&&pages[viewIdx].objs){ const h=objHit(evPdf(e),10/geom.scale); if(h!==ohover){ ohover=h; vOverlay.className=cursorFor(); if(h!==null) vHint.textContent=OBJ_NAMES[pages[viewIdx].objs.objs[h].kind]||''; drawOverlay(); } } return; }
+    if(!drag){ if(tool==='obj'&&geom&&pages[viewIdx].objs){ const h=objHit(evPdf(e),10/geom.scale); if(h!==ohover){ ohover=h; vOverlay.className=cursorFor(); if(h!==null){ const ob=pages[viewIdx].objs.objs[h]; vHint.textContent=objLabel(ob); } drawOverlay(); } } return; }
     if(drag.kind==='pan'){ vStage.scrollLeft=drag.sl-(e.clientX-drag.x); vStage.scrollTop=drag.st-(e.clientY-drag.y); return; }
     const Q=evPdf(e);
     if(drag.kind==='pen'){ const pts=drag.preview.pts, l=pts[pts.length-1]; if(Math.hypot(Q[0]-l[0],Q[1]-l[1])>0.7/geom.scale) pts.push(Q); }
     else if(drag.kind==='box'){ drag.cur=evPt(e); drawOverlay(); const s=drag.start,c=drag.cur; octx.setTransform(1,0,0,1,0,0); octx.strokeStyle='#4152d4'; octx.setLineDash([5,4]); octx.lineWidth=1.5; octx.strokeRect(Math.min(s[0],c[0]),Math.min(s[1],c[1]),Math.abs(c[0]-s[0]),Math.abs(c[1]-s[1])); octx.setLineDash([]); return; }
     else if(drag.kind==='omove'){ drag.ed=Object.assign({},drag.orig,{dx:drag.orig.dx+Q[0]-drag.start[0],dy:drag.orig.dy+Q[1]-drag.start[1]}); }
-    else if(drag.kind==='oresize'){ const o=drag.orig, P=drag.piv, C=drag.corner; const vx=C[0]-P[0], vy=C[1]-P[1], L2=vx*vx+vy*vy||1; const k=Math.max(0.05,((Q[0]-P[0])*vx+(Q[1]-P[1])*vy)/L2);
+    else if(drag.kind==='oresize'){ const o=drag.orig, P=drag.piv, C=drag.corner; const vx=C[0]-P[0], vy=C[1]-P[1], L2=vx*vx+vy*vy||1; const k=Math.max(0.25,((Q[0]-P[0])*vx+(Q[1]-P[1])*vy)/L2);
       const s2=o.s*k; drag.ed={px:o.px,py:o.py,s:s2,dx:P[0]*(1-k)+k*o.px*(1-o.s)+k*o.dx-o.px*(1-s2),dy:P[1]*(1-k)+k*o.py*(1-o.s)+k*o.dy-o.py*(1-s2)}; }
     else if(drag.kind==='move'){ const dx=Q[0]-drag.start[0], dy=Q[1]-drag.start[1], a=drag.a, o=drag.orig; if(a.type==='ink') a.pts=o.pts.map(q=>[q[0]+dx,q[1]+dy]); else {a.ax=o.ax+dx; a.ay=o.ay+dy;} }
     else if(drag.kind==='resize'){ const a=drag.a, [u,v]=localUV(a,Q); if(a.type==='image'){ a.w=Math.max(20,u); a.h=a.w*drag.orig.h/drag.orig.w; } else if(a.type==='text'){ a.w=Math.max(30,u); fitTextHeight(a); } else { a.w=Math.max(4,u); a.h=Math.max(4,v); } }

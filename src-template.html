@@ -107,14 +107,21 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 
 /* save bar */
 .savebar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid var(--line);box-shadow:0 -8px 28px rgba(0,0,0,.18);padding-block:14px;padding-bottom:max(14px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.savebar .in{max-width:1080px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) auto;gap:12px 18px;align-items:end}
+.savebar .in{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.savebar .row1{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:12px 18px;align-items:end}
+.savebar .row2{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 18px;align-items:end}
+.scanopts{display:flex;flex-wrap:wrap;gap:8px 16px}
+.scanopts>div{display:flex;flex-direction:column;gap:5px;min-width:0}
+.scanopts .lbl{margin:0;font-size:.82rem}
+.seg.sm{height:38px;padding:2px;gap:2px}
+.seg.sm label{font-size:.84rem;padding:0 10px;border-radius:7px}
 .lbl{display:block;font-size:.85rem;color:var(--ink);font-weight:500;margin-bottom:5px}
 .field{display:flex;height:46px;border:1px solid var(--line);border-radius:10px;overflow:hidden;direction:ltr;background:var(--inset)}
 .field input{flex:1;min-width:0;border:0;padding:10px 12px;font:inherit;background:transparent;color:var(--ink);text-align:right;direction:rtl}
 .field input:focus{outline:none}
 .field:focus-within{border-color:var(--focus);box-shadow:0 0 0 3px var(--brand-soft)}
 .field .ext{padding:10px 12px;color:var(--muted);border-right:1px solid var(--line)}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--inset);border:1px solid var(--line);border-radius:10px;height:46px;padding:3px;gap:3px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--inset);border:1px solid var(--line);border-radius:10px;height:46px;padding:3px;gap:3px}
 .seg label{position:relative;display:grid;place-items:center;text-align:center;border-radius:9px;padding:0 4px;cursor:pointer;font-size:.92rem;font-weight:500;color:var(--muted);transition:background .15s,color .15s}
 .seg input{position:absolute;opacity:0;pointer-events:none}
 .seg label.on{background:var(--brand);color:var(--brand-ink);box-shadow:var(--shadow)}
@@ -126,7 +133,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 .primary:hover:not(:disabled){filter:brightness(1.08)}
 .primary svg{width:20px;height:20px}
 .primary:disabled{opacity:.45;cursor:default}
-.status{grid-column:1/-1;font-size:.92rem;min-height:1.4em;margin:-4px 0 0}
+.status{font-size:.92rem;min-height:1.4em;margin:-2px 0 0}
 .status.ok{color:var(--ok)} .status.bad{color:var(--danger)}
 .privacy{color:var(--muted);font-size:.85rem;text-align:center;margin:0;display:flex;align-items:center;justify-content:center;gap:6px}
 .privacy svg{width:15px;height:15px;color:var(--ok)}
@@ -183,8 +190,9 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   .vhint{font-size:.74rem}
 }
 @media (max-width:760px){
-  .savebar .in{grid-template-columns:1fr;gap:10px}
-  body.has-pages .wrap{padding-bottom:240px}
+  .savebar .row1,.savebar .row2{grid-template-columns:1fr;gap:10px}
+  .savebar .primary{width:100%}
+  body.has-pages .wrap{padding-bottom:330px}
 }
 @media (max-width:520px){
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -234,19 +242,37 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 
 <div class="savebar" id="savebar" hidden>
   <div class="in">
-    <div class="namebox">
-      <label class="lbl" for="outName">שם הקובץ</label>
-      <div class="field"><span class="ext">.pdf</span><input id="outName" type="text" value="מסמך מאוחד" autocomplete="off"></div>
-    </div>
-    <div>
-      <div class="lblrow"><span class="lbl" id="sizeLbl">גודל הקובץ</span><span class="hint" id="levelHint"></span></div>
-      <div class="seg" role="radiogroup" aria-labelledby="sizeLbl">
-        <label><input type="radio" name="level" value="none" checked>איכות מלאה</label>
-        <label><input type="radio" name="level" value="balanced">מכווץ</label>
-        <label><input type="radio" name="level" value="small">קטן למייל</label>
+    <div class="row1">
+      <div class="namebox">
+        <label class="lbl" for="outName">שם הקובץ</label>
+        <div class="field"><span class="ext" id="extLbl">.pdf</span><input id="outName" type="text" value="מסמך מאוחד" autocomplete="off"></div>
+      </div>
+      <div>
+        <div class="lblrow"><span class="lbl" id="fmtLbl">סוג הקובץ</span><span class="hint" id="fmtHint"></span></div>
+        <div class="seg" role="radiogroup" aria-labelledby="fmtLbl">
+          <label><input type="radio" name="fmt" value="pdf" checked>PDF</label>
+          <label><input type="radio" name="fmt" value="scanpdf">PDF סרוק</label>
+          <label><input type="radio" name="fmt" value="tiff">TIFF</label>
+          <label><input type="radio" name="fmt" value="png">PNG</label>
+        </div>
       </div>
     </div>
-    <button class="primary" id="merge" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>שמירת PDF</button>
+    <div class="row2">
+      <div id="optPdf">
+        <div class="lblrow"><span class="lbl" id="sizeLbl">גודל הקובץ</span><span class="hint" id="levelHint"></span></div>
+        <div class="seg" role="radiogroup" aria-labelledby="sizeLbl">
+          <label><input type="radio" name="level" value="none" checked>איכות מלאה</label>
+          <label><input type="radio" name="level" value="balanced">מכווץ</label>
+          <label><input type="radio" name="level" value="small">קטן למייל</label>
+        </div>
+      </div>
+      <div id="optScan" class="scanopts" hidden>
+        <div><span class="lbl">מראה סרוק</span><div class="seg sm" role="radiogroup"><label><input type="radio" name="look" value="none">בלי</label><label><input type="radio" name="look" value="light">עדין</label><label><input type="radio" name="look" value="medium" checked>בינוני</label><label><input type="radio" name="look" value="strong">חזק</label></div></div>
+        <div><span class="lbl">צבע</span><div class="seg sm" role="radiogroup"><label><input type="radio" name="color" value="bw">שחור-לבן</label><label><input type="radio" name="color" value="gray" checked>אפור</label><label><input type="radio" name="color" value="color">צבע</label></div></div>
+        <div><span class="lbl">רזולוציה</span><div class="seg sm" role="radiogroup"><label><input type="radio" name="dpi" value="150">150</label><label><input type="radio" name="dpi" value="200" checked>200</label><label><input type="radio" name="dpi" value="300">300</label></div></div>
+      </div>
+      <button class="primary" id="merge" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="mergeLbl">שמירת PDF</span></button>
+    </div>
     <div class="status" id="status" role="status" aria-live="polite"></div>
   </div>
 </div>
@@ -368,6 +394,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   const grid=$('grid'),filesEl=$('files'),statusEl=$('status'),mergeBtn=$('merge');
   const norm=r=>((r%360)+360)%360;
   const setStatus=(t,c)=>{statusEl.textContent=t||'';statusEl.className='status'+(c?' '+c:'')};
+  const segVal=(n,d)=>{const r=document.querySelector('input[name='+n+']:checked'); return r?r.value:d;};
   const fmtSize=b=>b<1048576?Math.max(1,Math.round(b/1024))+' KB':(b/1048576).toFixed(1)+' MB';
   const isPdf=f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name);
   const isImg=f=>/^image\//.test(f.type)||/\.(jpe?g|jfif|pjpeg|png|gif|webp|bmp|dib|tiff?|heic|heif|avif|ico|svg)$/i.test(f.name);
@@ -1375,7 +1402,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     }
     return line.replace(/[֐-׿][֐-׿\s"'\-]*[֐-׿]|[֐-׿]/g,s=>rev(s));
   }
-  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages,segmentObjects,parseOps,runsInBox,buildTextEdits,rebuildContent,renderPage};
+  window.__mergeDebug={bidiVisual,wrapText,pages:()=>pages,segmentObjects,parseOps,runsInBox,buildTextEdits,rebuildContent,renderPage,lzwEncode,buildTiff,buildZip};
   let fontCache=null;
   async function exportFonts(doc){
     if(fontCache&&fontCache.doc===doc) return fontCache;
@@ -1531,6 +1558,148 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
     return {done,total:jobs.length};
   }
 
+  /* ==================== raster export: scanned look, TIFF, PNG, image-PDF ==================== */
+  const SCAN={none:{rot:0,blur:0,noise:0,con:1,vig:0,bri:0},
+    light:{rot:0.25,blur:0.2,noise:5,con:1.04,vig:0.03,bri:0},
+    medium:{rot:0.5,blur:0.35,noise:11,con:1.1,vig:0.07,bri:-3},
+    strong:{rot:0.9,blur:0.5,noise:18,con:1.18,vig:0.12,bri:-8}};
+  function scanLook(src,opts,seed){
+    const P=SCAN[opts.look]||SCAN.none, w=src.width, h=src.height;
+    let rnd=seed*9301+49297; const rand=()=>{ rnd=(rnd*1103515245+12345)&0x7fffffff; return rnd/0x7fffffff; };
+    const out=document.createElement('canvas'); out.width=w; out.height=h; const ctx=out.getContext('2d');
+    const paper=opts.color==='color'?'#f8f7f3':'#f6f6f6';
+    ctx.fillStyle=opts.look==='none'?'#ffffff':paper; ctx.fillRect(0,0,w,h);
+    const ang=(rand()*2-1)*P.rot*Math.PI/180;
+    ctx.save(); ctx.translate(w/2,h/2); ctx.rotate(ang); if(P.blur) ctx.filter='blur('+(P.blur*(w/1654)).toFixed(2)+'px)'; ctx.drawImage(src,-w/2,-h/2); ctx.restore(); ctx.filter='none';
+    const im=ctx.getImageData(0,0,w,h), d=im.data, gray=opts.color!=='color', bw=opts.color==='bw';
+    const con=P.con, bri=P.bri, nz=P.noise, vig=P.vig;
+    for(let y=0;y<h;y++){
+      const ey=Math.min(y,h-1-y)/h, vy=vig*Math.max(0,1-ey*8);
+      for(let x=0;x<w;x++){
+        const i=(y*w+x)*4; const ex=Math.min(x,w-1-x)/w; const v=Math.max(vy,vig*Math.max(0,1-ex*8));
+        const n=nz?(rand()-0.5)*nz:0;
+        if(gray){
+          let g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; g=(g-128)*con+128+bri+n; g*=1-v;
+          if(bw) g=g+(rand()-0.5)*18>150?255:0;
+          g=g<0?0:g>255?255:g; d[i]=d[i+1]=d[i+2]=g;
+        }else{
+          for(let c=0;c<3;c++){ let g=(d[i+c]-128)*con+128+bri+n; g*=1-v; d[i+c]=g<0?0:g>255?255:g; }
+        }
+      }
+    }
+    ctx.putImageData(im,0,0); return out;
+  }
+  /* --- TIFF (multi-page, LZW) --- */
+  function lzwEncode(bytes){
+    const out=[]; let bitBuf=0, bitCnt=0, codeLen=9;
+    const emit=c=>{ bitBuf=(bitBuf<<codeLen)|c; bitCnt+=codeLen; while(bitCnt>=8){ out.push((bitBuf>>(bitCnt-8))&255); bitCnt-=8; } bitBuf&=(1<<bitCnt)-1; };
+    let dict=new Map(), next=258; emit(256);
+    let prefix=-1;
+    for(let i=0;i<bytes.length;i++){
+      const b=bytes[i];
+      if(prefix<0){ prefix=b; continue; }
+      const key=prefix*256+b, code=dict.get(key);
+      if(code!==undefined){ prefix=code; continue; }
+      emit(prefix); dict.set(key,next++);
+      if(next===512)codeLen=10; else if(next===1024)codeLen=11; else if(next===2048)codeLen=12;
+      if(next>=4094){ emit(256); dict=new Map(); next=258; codeLen=9; }
+      prefix=b;
+    }
+    if(prefix>=0) emit(prefix); emit(257);
+    if(bitCnt>0) out.push((bitBuf<<(8-bitCnt))&255);
+    return new Uint8Array(out);
+  }
+  function buildTiff(pagesData,dpi){
+    /* pagesData: [{w,h,mode:'bw'|'gray'|'rgb',data:Uint8Array(packed rows)}] */
+    const parts=[]; let off=0; const ifdPos=[];
+    const le16=v=>[v&255,(v>>8)&255], le32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+    const enc=[]; const push=a=>{ parts.push(a instanceof Uint8Array?a:Uint8Array.from(a)); off+=a.length; };
+    push([0x49,0x49,42,0,8,0,0,0]);
+    const ifdOffsets=[];
+    pagesData.forEach((p,idx)=>{
+      const comp=lzwEncode(p.data); const spp=p.mode==='rgb'?3:1, bps=p.mode==='bw'?1:8;
+      const entries=[]; const extra=[]; let extraOff=0;
+      const E=(tag,type,count,val)=>entries.push({tag,type,count,val});
+      E(256,4,1,p.w); E(257,4,1,p.h);
+      if(spp===3){ E(258,3,3,'bps'); } else E(258,3,1,bps);
+      E(259,3,1,5); E(262,3,1,p.mode==='bw'?0:p.mode==='gray'?1:2);
+      E(273,4,1,'strip'); E(277,3,1,spp); E(278,4,1,p.h); E(279,4,1,comp.length);
+      E(282,5,1,'xres'); E(283,5,1,'yres'); E(284,3,1,1); E(296,3,1,2);
+      entries.sort((a,b)=>a.tag-b.tag);
+      const ifdSize=2+entries.length*12+4; const ifdStart=off; const dataStart=ifdStart+ifdSize;
+      /* out-of-line values follow the IFD */
+      const ool={}; let p2=dataStart;
+      ool.bps=p2; p2+=6; ool.xres=p2; p2+=8; ool.yres=p2; p2+=8; const stripOff=p2; p2+=comp.length; if(p2%2) p2++;
+      const buf=[]; buf.push(...le16(entries.length));
+      for(const e of entries){ buf.push(...le16(e.tag),...le16(e.type),...le32(e.count));
+        let v=e.val; if(v==='bps') v=ool.bps; else if(v==='strip') v=stripOff; else if(v==='xres') v=ool.xres; else if(v==='yres') v=ool.yres;
+        if(e.type===3&&e.count===1) buf.push(...le16(v),0,0); else buf.push(...le32(v)); }
+      ifdPos.push(off+2+entries.length*12); buf.push(0,0,0,0);
+      push(buf); push([8,0,8,0,8,0]); push([...le32(dpi),...le32(1)]); push([...le32(dpi),...le32(1)]); push(comp); if(off%2) push([0]);
+      ifdOffsets.push(ifdStart);
+    });
+    const total=off, outBuf=new Uint8Array(total); let o=0; for(const x of parts){ outBuf.set(x,o); o+=x.length; }
+    const dv=new DataView(outBuf.buffer); for(let i=0;i<ifdPos.length-1;i++) dv.setUint32(ifdPos[i],ifdOffsets[i+1],true);
+    return outBuf;
+  }
+  function canvasToTiffPage(c,mode){
+    const w=c.width,h=c.height, d=c.getContext('2d').getImageData(0,0,w,h).data;
+    if(mode==='rgb'){ const out=new Uint8Array(w*h*3); for(let i=0,j=0;i<d.length;i+=4){ out[j++]=d[i]; out[j++]=d[i+1]; out[j++]=d[i+2]; } return {w,h,mode,data:out}; }
+    if(mode==='gray'){ const out=new Uint8Array(w*h); for(let i=0,j=0;i<d.length;i+=4) out[j++]=d[i]; return {w,h,mode,data:out}; }
+    const rowB=Math.ceil(w/8), out=new Uint8Array(rowB*h);
+    for(let y=0;y<h;y++) for(let x=0;x<w;x++){ if(d[(y*w+x)*4]<128) out[y*rowB+(x>>3)]|=0x80>>(x&7); }
+    return {w,h,mode,data:out};
+  }
+  /* --- ZIP (store) --- */
+  const CRC_T=(()=>{const t=new Uint32Array(256); for(let n=0;n<256;n++){let c=n; for(let k=0;k<8;k++) c=c&1?0xEDB88320^(c>>>1):c>>>1; t[n]=c>>>0;} return t;})();
+  const crc32=b=>{ let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c=CRC_T[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+  function buildZip(files){
+    const enc=new TextEncoder(), parts=[], central=[]; let off=0;
+    const le16=v=>[v&255,(v>>8)&255], le32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+    for(const f of files){
+      const name=enc.encode(f.name), crc=crc32(f.data), hdr=Uint8Array.from([0x50,0x4b,3,4,20,0,0,8,0,0,0,0,0,0,...le32(crc),...le32(f.data.length),...le32(f.data.length),...le16(name.length),0,0]);
+      central.push(Uint8Array.from([0x50,0x4b,1,2,20,0,20,0,0,8,0,0,0,0,0,0,...le32(crc),...le32(f.data.length),...le32(f.data.length),...le16(name.length),0,0,0,0,0,0,0,0,0,0,0,0,...le32(off)]),name);
+      parts.push(hdr,name,f.data); off+=hdr.length+name.length+f.data.length;
+    }
+    const cstart=off; let clen=0; for(const c of central){ parts.push(c); clen+=c.length; }
+    parts.push(Uint8Array.from([0x50,0x4b,5,6,0,0,0,0,...le16(files.length),...le16(files.length),...le32(clen),...le32(cstart),0,0]));
+    const total=parts.reduce((n,x)=>n+x.length,0), out=new Uint8Array(total); let o=0; for(const x of parts){ out.set(x,o); o+=x.length; } return out;
+  }
+  /* render every page of a finished PDF through the scan look */
+  async function rasterizePdf(bytes,opts,progress){
+    const doc=await pdfjsLib.getDocument(Object.assign({data:bytes.slice(0)},PDFJS_OPTS)).promise; const n=doc.numPages, pagesOut=[];
+    for(let i=1;i<=n;i++){
+      progress(i,n); await new Promise(r=>setTimeout(r,0));
+      const pg=await doc.getPage(i), vp=pg.getViewport({scale:opts.dpi/72});
+      const c=document.createElement('canvas'); c.width=Math.round(vp.width); c.height=Math.round(vp.height);
+      const ctx=c.getContext('2d'); ctx.direction='ltr'; ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height);
+      await pg.render({canvasContext:ctx,viewport:vp}).promise;
+      const vp1=pg.getViewport({scale:1});
+      pagesOut.push({canvas:scanLook(c,opts,i*7919+Math.round(opts.dpi)),wPt:vp1.width,hPt:vp1.height});
+      c.width=1; c.height=1;
+    }
+    doc.destroy(); return pagesOut;
+  }
+  const blobOf=(c,type,q)=>new Promise(r=>c.toBlob(r,type,q));
+  async function exportRaster(bytes,fmt,opts,name,progress){
+    const pagesOut=await rasterizePdf(bytes,opts,progress);
+    if(fmt==='scanpdf'){
+      const d=await PDFDocument.create();
+      for(const p of pagesOut){ const jpg=new Uint8Array(await (await blobOf(p.canvas,'image/jpeg',opts.color==='bw'?0.9:0.82)).arrayBuffer()); const img=await d.embedJpg(jpg); const pg=d.addPage([p.wPt,p.hPt]); pg.drawImage(img,{x:0,y:0,width:p.wPt,height:p.hPt}); }
+      return {blob:new Blob([await d.save()],{type:'application/pdf'}),ext:'.pdf',pages:pagesOut.length};
+    }
+    if(fmt==='tiff'){
+      const mode=opts.color==='color'?'rgb':opts.color==='gray'?'gray':'bw';
+      const data=[]; for(let i=0;i<pagesOut.length;i++){ progress(i+1,pagesOut.length,'מקודד TIFF'); await new Promise(r=>setTimeout(r,0)); data.push(canvasToTiffPage(pagesOut[i].canvas,mode)); }
+      return {blob:new Blob([buildTiff(data,opts.dpi)],{type:'image/tiff'}),ext:'.tif',pages:pagesOut.length};
+    }
+    /* png */
+    const pngs=[]; for(let i=0;i<pagesOut.length;i++){ progress(i+1,pagesOut.length,'מקודד PNG'); pngs.push(new Uint8Array(await (await blobOf(pagesOut[i].canvas,'image/png')).arrayBuffer())); }
+    if(pngs.length===1) return {blob:new Blob([pngs[0]],{type:'image/png'}),ext:'.png',pages:1};
+    const files=pngs.map((d,i)=>({name:name+'-'+String(i+1).padStart(2,'0')+'.png',data:d}));
+    return {blob:new Blob([buildZip(files)],{type:'application/zip'}),ext:'.zip',pages:pngs.length};
+  }
+
   /* ---------- merge ---------- */
   mergeBtn.addEventListener('click',async()=>{
     if(!pages.length) return;
@@ -1566,7 +1735,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
           await drawAnnots(out,pg,p);
         }
       }
-      const level=(document.querySelector('input[name=level]:checked')||{}).value||'none';
+      const level=segVal('fmt','pdf')==='pdf'?segVal('level','none'):'none';
       let bytes=await out.save();
       const before=bytes.length;
       let compNote='';
@@ -1577,19 +1746,30 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
         const pct=Math.round((1-bytes.length/before)*100);
         compNote = r.done ? ' הקובץ קטן ב-'+pct+'% (מ-'+fmtSize(before)+').' : ' לא נמצאו תמונות שאפשר לכווץ בלי לפגוע באיכות, הקובץ נשמר במלואו.';
       }
-      const name=($('outName').value||'').trim().replace(/[\\/:*?"<>|]+/g,'-').replace(/\.pdf$/i,'')||'מסמך מאוחד';
-      const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
-      const a=document.createElement('a'); a.href=url; a.download=name+'.pdf'; document.body.appendChild(a); a.click(); a.remove();
+      const name=($('outName').value||'').trim().replace(/[\\/:*?"<>|]+/g,'-').replace(/\.(pdf|tiff?|png|zip)$/i,'')||'מסמך מאוחד';
+      const fmt=segVal('fmt','pdf');
+      let blob=new Blob([bytes],{type:'application/pdf'}), ext='.pdf', note=compNote;
+      if(fmt!=='pdf'){
+        const opts={look:segVal('look','medium'),color:segVal('color','gray'),dpi:parseInt(segVal('dpi','200'))};
+        const r=await exportRaster(bytes,fmt,opts,name,(i,n,what)=>setStatus((what||'מעבד עמודים')+'... '+i+' מתוך '+n));
+        blob=r.blob; ext=r.ext; note=ext==='.zip'?' קובץ ZIP עם '+r.pages+' תמונות PNG.':'';
+      }
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download=name+ext; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(url),60000);
-      setStatus('הקובץ '+name+'.pdf נשמר בתיקיית ההורדות: '+out.getPageCount()+' עמודים, '+fmtSize(bytes.length)+'.'+compNote,'ok');
+      setStatus('הקובץ '+name+ext+' נשמר בתיקיית ההורדות: '+out.getPageCount()+' עמודים, '+fmtSize(blob.size)+'.'+note,'ok');
     }catch(e){ setStatus((e&&e.message)||'יצירת הקובץ נכשלה. נסו שוב.','bad'); }
     finally{ mergeBtn.disabled=pages.length===0; }
   });
 
   const HINTS={none:'הקובץ נשמר בדיוק כמו המקור, בלי שום שינוי.',balanced:'מומלץ. הטקסט נשאר חד, תמונות וסריקות נשמרות באיכות גבוהה.',small:'הכי קטן, לשליחה במייל או בוואטסאפ. הטקסט נשאר חד והסריקות קריאות.'};
-  const syncHint=()=>{const v=(document.querySelector('input[name=level]:checked')||{}).value||'none'; $('levelHint').textContent=HINTS[v]; document.querySelectorAll('.seg label').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));};
-  document.querySelectorAll('.seg input').forEach(r=>{r.addEventListener('focus',()=>r.parentElement.classList.toggle('focus',r.matches(':focus-visible')));r.addEventListener('blur',()=>r.parentElement.classList.remove('focus'));});
-  document.querySelectorAll('input[name=level]').forEach(r=>r.addEventListener('change',syncHint)); syncHint();
+  const FMT_HINTS={pdf:'הטקסט נשאר טקסט. אפשר לחפש ולהעתיק.',scanpdf:'כל עמוד הופך לתמונה, כמו קובץ שיצא ממכונת סריקה.',tiff:'קובץ TIFF רב-עמודי, הפורמט שמערכות של חברות ביטוח מקבלות.',png:'תמונה לכל עמוד. כמה עמודים יורדים יחד כקובץ ZIP.'};
+  const FMT_BTN={pdf:'שמירת PDF',scanpdf:'שמירת PDF סרוק',tiff:'שמירת TIFF',png:'שמירת PNG'}, FMT_EXT={pdf:'.pdf',scanpdf:'.pdf',tiff:'.tif',png:'.png'};
+  const syncHint=()=>{const v=segVal('level','none'), f=segVal('fmt','pdf'); $('levelHint').textContent=HINTS[v]; $('fmtHint').textContent=FMT_HINTS[f]; $('mergeLbl').textContent=FMT_BTN[f]; $('extLbl').textContent=FMT_EXT[f];
+    $('optPdf').hidden=f!=='pdf'; $('optScan').hidden=f==='pdf';
+    document.querySelectorAll('.seg label').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));};
+  document.querySelectorAll('.seg input').forEach(r=>{r.addEventListener('focus',()=>r.parentElement.classList.toggle('focus',r.matches(':focus-visible')));r.addEventListener('blur',()=>r.parentElement.classList.remove('focus'));r.addEventListener('change',syncHint);});
+  syncHint();
   renderFiles(); renderGrid();
 })();
 </script>

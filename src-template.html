@@ -94,7 +94,14 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 .grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px}
 .page{background:var(--surface);border:1px solid var(--line)!important;border-radius:var(--r);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;border:2px solid transparent;transition:border-color .15s,transform .15s}
 .page:hover{border-color:var(--focus)!important}
+.page{position:relative}
 .page.dragging{opacity:.35}
+.grip{position:absolute;top:8px;left:8px;z-index:2;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 90%,transparent);color:var(--muted);display:none;place-items:center;padding:0;touch-action:none;cursor:grab;-webkit-tap-highlight-color:transparent}
+.grip svg{width:18px;height:18px}
+@media (pointer:coarse){.grip{display:grid}.page{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}}
+.dragghost{position:fixed;z-index:60;pointer-events:none;margin:0;opacity:.92;transform:scale(1.04) rotate(-2deg);box-shadow:0 14px 36px rgba(0,0,0,.45);border-color:var(--brand)!important}
+body.reordering{touch-action:none;overscroll-behavior:contain}
+.page.placeholder{opacity:.3}
 .page.target{border-color:var(--brand)!important;transform:scale(1.02)}
 .thumb{position:relative;display:block;width:100%;aspect-ratio:1/1;border:0;background:var(--inset);cursor:zoom-in;padding:0;margin:0;overflow:hidden}
 .thumb img{position:absolute;inset:14px;width:calc(100% - 28px);height:calc(100% - 28px);object-fit:contain;display:block;transition:transform .2s;filter:drop-shadow(0 2px 4px rgba(0,0,0,.18))}
@@ -573,7 +580,8 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   function cardHTML(p,i){
     const f=files.get(p.fileId);
     const land=isLandscape(p);
-    return '<button class="thumb" type="button" data-act="view" aria-label="הגדלת עמוד '+(i+1)+'">'
+    return '<span class="grip" data-grip title="גרירה לשינוי סדר" aria-label="גרירה לשינוי סדר"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg></span>'
+      +'<button class="thumb" type="button" data-act="view" aria-label="הגדלת עמוד '+(i+1)+'">'
       +(p.thumb?'<img alt="" draggable="false" src="'+p.thumb+'" style="transform:rotate('+p.rot+'deg)">':'<span class="loading">טוען...</span>')
       +'<span class="num">'+(i+1)+'</span>'
       +((p.annots&&p.annots.length)||(p.objEdits&&Object.keys(p.objEdits).length)?'<span class="pbadge">✎ '+((p.annots?p.annots.length:0)+(p.objEdits?Object.keys(p.objEdits).length:0))+'</span>':'')
@@ -629,6 +637,38 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   grid.addEventListener('drop',e=>{if(!dragKey) return; e.preventDefault(); e.stopPropagation(); const li=e.target.closest('li.page'); if(!li) return;
     const from=pages.findIndex(p=>p.key==dragKey), to=pages.findIndex(p=>p.key==li.dataset.key);
     if(from<0||to<0||from===to) return; pages.splice(to,0,pages.splice(from,1)[0]); renderGrid();});
+
+  /* touch / pen reordering: grab the handle (instant) or long-press a card, then drag; the grid scrolls near the edges */
+  (function(){
+    let st=null; const HOLD=320, MOVE=9, EDGE=72;
+    const clear=()=>{ if(!st) return; clearTimeout(st.timer); cancelAnimationFrame(st.raf); if(st.ghost) st.ghost.remove(); if(st.li) st.li.classList.remove('placeholder'); grid.querySelectorAll('.target').forEach(l=>l.classList.remove('target')); document.body.classList.remove('reordering'); st=null; };
+    const begin=()=>{ if(!st||st.on) return; st.on=true; const r=st.li.getBoundingClientRect();
+      st.ox=st.x-r.left; st.oy=st.y-r.top;
+      const g=st.li.cloneNode(true); g.className='page dragghost'; g.style.width=r.width+'px'; g.style.height=r.height+'px'; g.style.left=r.left+'px'; g.style.top=r.top+'px'; document.body.appendChild(g); st.ghost=g;
+      st.li.classList.add('placeholder'); document.body.classList.add('reordering'); try{st.li.setPointerCapture(st.id);}catch(_){} if(navigator.vibrate) try{navigator.vibrate(12);}catch(_){}
+      const tick=()=>{ if(!st||!st.on) return; const h=innerHeight, y=st.y; let d=0; if(y<EDGE+60) d=-Math.ceil((EDGE+60-y)/6); else if(y>h-EDGE-70) d=Math.ceil((y-(h-EDGE-70))/6); if(d){ window.scrollBy(0,Math.max(-22,Math.min(22,d))); over(); } st.raf=requestAnimationFrame(tick); };
+      st.raf=requestAnimationFrame(tick); over(); };
+    const over=()=>{ if(!st||!st.on) return; st.ghost.style.left=(st.x-st.ox)+'px'; st.ghost.style.top=(st.y-st.oy)+'px';
+      const el=document.elementFromPoint(st.x,st.y), li=el&&el.closest?el.closest('li.page'):null;
+      st.tgt=li&&li!==st.li&&grid.contains(li)?li:null;
+      grid.querySelectorAll('.target').forEach(l=>{ if(l!==st.tgt) l.classList.remove('target'); }); if(st.tgt) st.tgt.classList.add('target'); };
+    grid.addEventListener('pointerdown',e=>{
+      if(e.pointerType==='mouse'||!e.isPrimary||st) return;
+      const li=e.target.closest('li.page'); if(!li||e.target.closest('.acts')) return;
+      li.draggable=false;
+      st={li,id:e.pointerId,x:e.clientX,y:e.clientY,sx:e.clientX,sy:e.clientY,on:false,tgt:null};
+      if(e.target.closest('[data-grip]')) begin(); else st.timer=setTimeout(begin,HOLD);
+    });
+    grid.addEventListener('pointermove',e=>{ if(!st||e.pointerId!==st.id) return; st.x=e.clientX; st.y=e.clientY;
+      if(!st.on){ if(Math.hypot(st.x-st.sx,st.y-st.sy)>MOVE) clear(); return; } e.preventDefault(); over(); });
+    const end=e=>{ if(!st||e.pointerId!==st.id) return; const was=st.on, li=st.li, tgt=st.tgt; clear();
+      if(was){ suppressClick=true; setTimeout(()=>suppressClick=false,350);
+        if(e.type==='pointerup'&&tgt){ const from=pages.findIndex(p=>p.key==li.dataset.key), to=pages.findIndex(p=>p.key==tgt.dataset.key); if(from>=0&&to>=0&&from!==to){ pages.splice(to,0,pages.splice(from,1)[0]); renderGrid(); } } } };
+    grid.addEventListener('pointerup',end); grid.addEventListener('pointercancel',end);
+    document.addEventListener('touchmove',e=>{ if(st&&st.on&&e.cancelable) e.preventDefault(); },{passive:false});
+    grid.addEventListener('contextmenu',e=>{ if(st) e.preventDefault(); });
+    let suppressClick=false; grid.addEventListener('click',e=>{ if(suppressClick){ e.stopPropagation(); e.preventDefault(); } },true);
+  })();
 
   $('rotAll').onclick=()=>{pages.forEach(p=>p.rot=norm(p.rot+90)); renderGrid();};
   $('reverse').onclick=()=>{pages.reverse(); renderGrid();};

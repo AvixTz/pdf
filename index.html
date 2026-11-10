@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
 <title>מאחד מסמכים</title>
+<meta name="theme-color" content="#0a1020">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="מאחד מסמכים">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1020'/%3E%3Cpath d='M22 12h14l10 10v26a4 4 0 0 1-4 4H22a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4z' fill='none' stroke='%23f4d98a' stroke-width='3.5' stroke-linejoin='round'/%3E%3Cpath d='M35 12v11h11M25 34h14M25 42h14' fill='none' stroke='%23f4d98a' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800&display=swap">
 <style>
@@ -133,7 +141,9 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
 .primary:hover:not(:disabled){filter:brightness(1.08)}
 .primary svg{width:20px;height:20px}
 .primary:disabled{opacity:.45;cursor:default}
-.status{font-size:.92rem;min-height:1.4em;margin:-2px 0 0}
+.status{font-size:.92rem;margin:-2px 0 0}
+.status:empty{display:none}
+.optbtn,.scrim,.primary .short{display:none}
 .status.ok{color:var(--ok)} .status.bad{color:var(--danger)}
 .privacy{color:var(--muted);font-size:.85rem;text-align:center;margin:0;display:flex;align-items:center;justify-content:center;gap:6px}
 .privacy svg{width:15px;height:15px;color:var(--ok)}
@@ -190,9 +200,45 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   .vhint{font-size:.74rem}
 }
 @media (max-width:760px){
-  .savebar .row1,.savebar .row2{grid-template-columns:1fr;gap:10px}
-  .savebar .primary{width:100%}
-  body.has-pages .wrap{padding-bottom:330px}
+  /* phone: the bar is one row (summary of the choices + save). The choices open as a sheet above it. */
+  body.has-pages .wrap{padding-bottom:112px}
+  .savebar{padding-block:10px;padding-bottom:max(10px,env(safe-area-inset-bottom,0px));padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+  .savebar .in{gap:8px}
+  .savebar .row1{display:none;grid-template-columns:1fr;gap:8px}
+  .savebar .row2{grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+  .savebar #optPdf,.savebar #optScan{grid-column:1/-1}
+  .savebar:not(.open) #optPdf,.savebar:not(.open) #optScan{display:none}
+  .savebar.open .row1{display:grid}
+  .savebar.open .row1{padding-top:2px}
+  .savebar.open{border-radius:18px 18px 0 0;max-height:calc(100dvh - 40px);overflow-y:auto}
+  .savebar .namebox,.savebar .row1>div,.savebar #optPdf,.savebar .scanopts>div{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+  .savebar .lbl{white-space:nowrap;min-width:64px}
+  .savebar .seg label{white-space:nowrap}
+  .savebar .scanopts{flex-direction:column;flex-wrap:nowrap;gap:8px}
+  .savebar .lbl,.savebar .scanopts .lbl{margin:0;font-size:.8rem;color:var(--muted)}
+  .savebar .lblrow{margin:0;display:block}
+  .savebar .lblrow .hint{display:none}
+  .savebar .seg,.savebar .seg.sm,.savebar .field{height:40px}
+  .savebar .seg label,.savebar .seg.sm label{font-size:.84rem;padding:0 2px}
+  .savebar .field input,.savebar .field .ext{padding:8px 10px;font-size:.95rem}
+  .optbtn{display:flex;align-items:center;gap:8px;min-width:0;height:48px;padding:0 12px;background:var(--inset);border:1px solid var(--line);border-radius:10px;color:var(--ink);font:inherit;text-align:start;cursor:pointer}
+  .optbtn .tx{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+  .optbtn .t{font-size:.92rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .optbtn .s{font-size:.76rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .optbtn svg{width:18px;height:18px;flex:none;color:var(--brand);transition:transform .2s}
+  .savebar.open .optbtn svg{transform:rotate(180deg)}
+  .savebar.open .optbtn{border-color:var(--brand)}
+  .savebar .primary{height:48px;padding:0 20px}
+  .savebar .primary #mergeLbl{display:none}
+  .savebar .primary .short{display:inline}
+  .savebar .status{font-size:.84rem;margin:0}
+  .scrim{display:block;position:fixed;inset:0;z-index:4;background:rgba(3,8,18,.55)}
+  @media (prefers-reduced-motion:reduce){.optbtn svg{transition:none}}
+}
+@media (max-width:380px){
+  .savebar .seg label,.savebar .seg.sm label{font-size:.78rem}
+  .savebar .lbl{min-width:58px;font-size:.76rem}
+  .savebar .primary{padding:0 14px}
 }
 @media (max-width:520px){
   .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
@@ -240,6 +286,7 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
   <p class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>הקבצים נשארים במחשב שלך ולא נשלחים לשום מקום</p>
 </div>
 
+<div class="scrim" id="scrim" hidden></div>
 <div class="savebar" id="savebar" hidden>
   <div class="in">
     <div class="row1">
@@ -271,7 +318,8 @@ body.has-pages .drop .sub,body.has-pages .drop .cta,body.has-pages .drop .types{
         <div><span class="lbl">צבע</span><div class="seg sm" role="radiogroup"><label><input type="radio" name="color" value="bw">שחור-לבן</label><label><input type="radio" name="color" value="gray" checked>אפור</label><label><input type="radio" name="color" value="color">צבע</label></div></div>
         <div><span class="lbl">רזולוציה</span><div class="seg sm" role="radiogroup"><label><input type="radio" name="dpi" value="150">150</label><label><input type="radio" name="dpi" value="200" checked>200</label><label><input type="radio" name="dpi" value="300">300</label></div></div>
       </div>
-      <button class="primary" id="merge" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="mergeLbl">שמירת PDF</span></button>
+      <button class="optbtn" id="optToggle" type="button" aria-expanded="false" aria-label="הגדרות שמירה"><span class="tx"><span class="t" id="sumName"></span><span class="s" id="sumOpts"></span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button>
+      <button class="primary" id="merge" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg><span id="mergeLbl">שמירת PDF</span><span class="short">שמירה</span></button>
     </div>
     <div class="status" id="status" role="status" aria-live="polite"></div>
   </div>
@@ -2987,7 +3035,16 @@ X.B(E,Y);return E}return J}())
   const FMT_BTN={pdf:'שמירת PDF',scanpdf:'שמירת PDF סרוק',tiff:'שמירת TIFF',png:'שמירת PNG'}, FMT_EXT={pdf:'.pdf',scanpdf:'.pdf',tiff:'.tif',png:'.png'};
   const syncHint=()=>{const v=segVal('level','none'), f=segVal('fmt','pdf'); $('levelHint').textContent=HINTS[v]; $('fmtHint').textContent=FMT_HINTS[f]; $('mergeLbl').textContent=FMT_BTN[f]; $('extLbl').textContent=FMT_EXT[f];
     $('optPdf').hidden=f!=='pdf'; $('optScan').hidden=f==='pdf';
-    document.querySelectorAll('.seg label').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));};
+    document.querySelectorAll('.seg label').forEach(l=>l.classList.toggle('on',l.querySelector('input').checked));
+    const pick=n=>{const i=document.querySelector('input[name="'+n+'"]:checked');return i?i.parentElement.textContent.trim():'';};
+    $('sumName').textContent=(($('outName').value||'').trim()||'מסמך מאוחד')+FMT_EXT[f];
+    $('sumOpts').textContent=f==='pdf'?pick('fmt')+' · '+pick('level'):[pick('fmt'),'סריקה: '+pick('look'),pick('color'),pick('dpi')].join(' · ');};
+  const saveBar=$('savebar'), setOpen=o=>{saveBar.classList.toggle('open',o);$('optToggle').setAttribute('aria-expanded',o?'true':'false');$('scrim').hidden=!o;};
+  $('optToggle').addEventListener('click',()=>setOpen(!saveBar.classList.contains('open')));
+  $('scrim').addEventListener('click',()=>setOpen(false));
+  mergeBtn.addEventListener('click',()=>setOpen(false));
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&saveBar.classList.contains('open'))setOpen(false);});
+  $('outName').addEventListener('input',()=>syncHint());
   document.querySelectorAll('.seg input').forEach(r=>{r.addEventListener('focus',()=>r.parentElement.classList.toggle('focus',r.matches(':focus-visible')));r.addEventListener('blur',()=>r.parentElement.classList.remove('focus'));r.addEventListener('change',syncHint);});
   syncHint();
   renderFiles(); renderGrid();
